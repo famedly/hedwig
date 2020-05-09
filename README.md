@@ -45,8 +45,3 @@ Short description of the project.
 
 Instructions of how to get the project running.
 
-## Running tests
-
-## Acknowledgments
-
-
