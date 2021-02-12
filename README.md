@@ -1,5 +1,3 @@
-# Famedly
-
 **This project is part of the source code of Famedly.**
 
 We think that software for healthcare should be open source, so we publish most 
@@ -37,11 +35,19 @@ us by [info@famedly.com](mailto:info@famedly.com?subject=[GitLab]%20More%20Infor
 
 ---
 
-# Project Name
 
-Short description of the project.
+# Matrix Push Gateway The next Generation
+This is a WIP Push Gateway for the matrix.org ecosystem.
 
-## Getting Started
+### Build Dependencies:
+- openSSL
 
-Instructions of how to get the project running.
+##### Fedora:
+```
+sudo dnf install openssl-devel
+```
 
+##### Debian/Ubuntu:
+```
+sudo apt install openssl-dev
+```
