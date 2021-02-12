@@ -1,5 +1,5 @@
 [package]
-name = "Matrix_Push_Gateway_TNG"
+name = "matrix_push_gateway_tng"
 version = "0.1.0"
 authors = ["Christian Pauly <christian-pauly@posteo.de>"]
 edition = "2018"

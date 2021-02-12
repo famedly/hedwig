@@ -1,5 +1,4 @@
 use actix_web::{http, web, ResponseError};
-use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
@@ -16,10 +15,11 @@ pub enum Priority {
 }
 
 #[derive(Serialize, Debug)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ErrCode {
-    M_BAD_JSON,
-    M_MISSING_PARAM,
-    M_UNKNOWN,
+    MBadJson,
+    MMissingParam,
+    MUnknown,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -79,7 +79,7 @@ impl Display for MatrixError {
 impl ResponseError for MatrixError {
     fn error_response(&self) -> web::HttpResponse {
         let status_code = match self.errcode {
-            ErrCode::M_UNKNOWN => http::StatusCode::BAD_GATEWAY,
+            ErrCode::MUnknown => http::StatusCode::BAD_GATEWAY,
             _ => http::StatusCode::BAD_REQUEST,
         };
         web::HttpResponse::build(status_code).json(self)
