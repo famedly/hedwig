@@ -1,0 +1,23 @@
+stages:
+  - test
+
+cargo-test:
+  stage: test
+  image: rust:latest
+  cache:
+    paths:
+      - target/
+    key: test
+
+  before_script:
+    - apt-get update -yqq
+    - apt-get install -yqq --no-install-recommends build-essential libpq-dev
+    - rustup component add clippy
+    - rustup component add rustfmt
+  script:
+    - rustc --version && cargo --version  # Print version info for debugging
+    - cargo fmt -- --check
+    - cargo check
+    - cargo clippy
+    - cargo test --all --verbose
+
