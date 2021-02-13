@@ -1,3 +1,19 @@
+# Matrix Push Gateway The next Generation
+This is a WIP Push Gateway for the matrix.org ecosystem.
+
+### Build Dependencies:
+- openSSL
+
+##### Fedora:
+```
+sudo dnf install openssl-devel
+```
+
+##### Debian/Ubuntu:
+```
+sudo apt install openssl-dev
+```
+
 **This project is part of the source code of Famedly.**
 
 We think that software for healthcare should be open source, so we publish most 
@@ -34,20 +50,3 @@ information take a look at [Famedly.com](https://famedly.com) or contact
 us by [info@famedly.com](mailto:info@famedly.com?subject=[GitLab]%20More%20Information%20)
 
 ---
-
-
-# Matrix Push Gateway The next Generation
-This is a WIP Push Gateway for the matrix.org ecosystem.
-
-### Build Dependencies:
-- openSSL
-
-##### Fedora:
-```
-sudo dnf install openssl-devel
-```
-
-##### Debian/Ubuntu:
-```
-sudo apt install openssl-dev
-```
