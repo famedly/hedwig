@@ -1,3 +1,21 @@
+/*
+ *   Matrix Push Gateway The Next Generation
+ *   Copyright (C) 2019, 2020, 2021 Famedly GmbH
+ *
+ *   This program is free software: you can redistribute it and/or modify
+ *   it under the terms of the GNU Affero General Public License as
+ *   published by the Free Software Foundation, either version 3 of the
+ *   License, or (at your option) any later version.
+ *
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ *   GNU Affero General Public License for more details.
+ *
+ *   You should have received a copy of the GNU Affero General Public License
+ *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 use actix_web::{web, App, HttpResponse, HttpServer};
 mod models;
 mod settings;
@@ -64,6 +82,7 @@ async fn process_notification(
     } else {
         fcm::MessageBuilder::new_multi(&config.fcm_admin_key, &registration_ids)
     };
+
     // Set the data for fcm here
     builder.collapse_key(&config.fcm_collapse_key);
     builder
@@ -72,10 +91,8 @@ async fn process_notification(
             errcode: ErrCode::MBadJson,
             error: e.to_string(),
         })?;
-    // builder.data(&map);
 
     // Set additional keys for the notification message
-
     if !data_message_mode && !is_clearing_notification {
         let mut notification = fcm::NotificationBuilder::new();
         notification
@@ -91,7 +108,6 @@ async fn process_notification(
     }
 
     // Send the fcm message
-
     if let Ok(FcmResponse {
         results: Some(results),
         ..
