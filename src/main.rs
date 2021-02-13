@@ -118,7 +118,7 @@ async fn process_notification(
             .filter_map(|result| result.error.and_then(|_| result.registration_id.clone()))
             .collect();
 
-        Ok(HttpResponse::Ok().json(PushGatewayResponse { rejected }))
+        Ok(HttpResponse::Ok().json(&PushGatewayResponse { rejected }))
     } else {
         Err(MatrixError {
             error: String::from("Invalid response from upstream push service"),
