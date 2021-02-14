@@ -1,7 +1,32 @@
 # Matrix Push Gateway The next Generation
-This is a WIP Push Gateway for the matrix.org ecosystem.
+This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) application. It implements the [Matrix Push Notification API r0.1.1](https://matrix.org/docs/spec/push_gateway/r0.1.1) and supports [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging/) only.
 
-### Build Dependencies:
+## Features:
+- Implements the `POST /_matrix/push/v1/notify` endpoint
+- Forwards notifications from the format `event_id_only`
+- Returns invalid push keys in the `rejected` response field
+
+## Planned:
+- Better logging
+- Endpoint for stats
+
+# Get started
+1. Download the latest build from the CI: [amd64](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-amd64)
+
+2. Add your Firebase Admin Key to the `config.toml` file
+
+3. Run the binary
+
+# How to build for your platform
+
+1. [Install Rust and Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html)
+
+2. Build the binary:
+```
+cargo build --release
+```
+
+## Build Dependencies:
 - openSSL
 
 ##### Fedora:
@@ -14,7 +39,7 @@ sudo dnf install openssl-devel
 sudo apt install openssl-dev
 ```
 
-**This project is part of the source code of Famedly.**
+# This project is part of the source code of Famedly
 
 We think that software for healthcare should be open source, so we publish most 
 parts of our source code at [gitlab.com/famedly](https://gitlab.com/famedly).
