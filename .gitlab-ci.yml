@@ -1,5 +1,6 @@
 stages:
   - test
+  - build
 
 cargo-test:
   stage: test
@@ -8,7 +9,6 @@ cargo-test:
     paths:
       - target/
     key: test
-
   before_script:
     - apt-get update -yqq
     - apt-get install -yqq --no-install-recommends build-essential libpq-dev
@@ -21,3 +21,22 @@ cargo-test:
     - cargo clippy
     - cargo test --all --verbose
 
+cargo-build-amd64:
+  stage: test
+  image: rust:latest
+  cache:
+    paths:
+      - target/
+    key: test
+  before_script:
+    - apt-get update -yqq
+    - apt-get install -yqq --no-install-recommends build-essential libpq-dev
+    - rustup component add clippy
+    - rustup component add rustfmt
+  script:
+    - rustc --version && cargo --version  # Print version info for debugging
+    - cargo build --release
+    - mv config.sample.toml ./target/release/config.toml
+  artifacts:
+    paths:
+      - target/release/
