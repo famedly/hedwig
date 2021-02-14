@@ -11,7 +11,7 @@ cargo-test:
     key: test
   before_script:
     - apt-get update -yqq
-    - apt-get install -yqq --no-install-recommends build-essential libpq-dev
+    - apt-get install -yqq --no-install-recommends build-essential
     - rustup component add clippy
     - rustup component add rustfmt
   script:
