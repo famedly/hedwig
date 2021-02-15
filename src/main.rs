@@ -29,21 +29,7 @@ async fn process_notification(
     config: web::Data<Settings>,
     fcm_client: web::Data<fcm::Client>,
 ) -> Result<HttpResponse, MatrixError> {
-    // Collect the pushkeys and check if the app_id of each device matches
-    let registration_ids: Vec<String> = push_notification
-        .notification
-        .devices
-        .iter()
-        .filter_map(|device| {
-            if device.app_id == config.app_id
-                || device.app_id == format!("{}.data_message", config.app_id)
-            {
-                Some(device.pushkey.clone())
-            } else {
-                None
-            }
-        })
-        .collect();
+    let registration_ids = push_notification.pushkeys_for_app_id(&config.app_id);
 
     if registration_ids.is_empty() {
         return Err(MatrixError {
@@ -52,29 +38,23 @@ async fn process_notification(
         });
     }
 
-    let first_device = if let Some(device) = push_notification.notification.devices.first() {
-        device
-    } else {
-        return Err(MatrixError {
+    let first_device = push_notification
+        .notification
+        .devices
+        .first()
+        .ok_or(MatrixError {
             error: String::from("No devices were provided"),
             errcode: ErrCode::MBadJson,
-        });
-    };
+        })?;
 
-    // Weither the push gateway should send only a data message - we have a specific app_id suffix for this
+    // Whether the push gateway should send only a data message - we have a specific app_id suffix for this
     let data_message_mode = first_device.app_id == format!("{}.data_message", config.app_id);
 
     // Some notifications may just inform the device that there are no more unread rooms
     let is_clearing_notification = push_notification.notification.event_id.is_none();
 
     // String representation of the unread counter with "0" as default
-    let unread_string = match &push_notification.notification.counts {
-        Some(counts) => match counts.unread {
-            Some(unread) => format!("{}", unread),
-            None => String::from("0"),
-        },
-        None => String::from("0"),
-    };
+    let unread_count_string = push_notification.notification_count().to_string();
 
     // Get the MessageBuilder - either we need to send the notification to one or to multiple devices
     let mut builder = if registration_ids.len() == 1 {
@@ -99,7 +79,7 @@ async fn process_notification(
             .title(&config.fcm_notification_title)
             .click_action(&config.fcm_notification_click_action)
             .body(&config.fcm_notification_body)
-            .badge(&unread_string)
+            .badge(&unread_count_string)
             .sound(&config.fcm_notification_sound)
             .icon(&config.fcm_notification_icon)
             .tag(&config.fcm_notification_tag);
