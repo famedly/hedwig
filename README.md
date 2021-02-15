@@ -1,4 +1,4 @@
-# Matrix Push Gateway The next Generation
+# Matrix Hedwig
 This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) application. It implements the [Matrix Push Notification API r0.1.1](https://matrix.org/docs/spec/push_gateway/r0.1.1) and supports [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging/) only.
 
 ## Features:
@@ -11,7 +11,7 @@ This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) applic
 - Endpoint for stats
 
 # Get started
-1. Download the latest build from the CI: [amd64](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-amd64)
+1. Download the latest build from the CI: [amd64](https://gitlab.com/famedly/services/hedwig/-/jobs/artifacts/main/browse?job=cargo-build-amd64)
 
 2. Add your Firebase Admin Key to the `config.toml` file
 

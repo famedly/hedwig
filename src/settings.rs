@@ -1,5 +1,5 @@
 /*
- *   Matrix Push Gateway The Next Generation
+ *   Matrix Hedwig
  *   Copyright (C) 2019, 2020, 2021 Famedly GmbH
  *
  *   This program is free software: you can redistribute it and/or modify
