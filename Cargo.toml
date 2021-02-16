@@ -7,8 +7,8 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = {version="4.0.0-beta.3", features=["tls_rustls"], default-features=false}
+actix-web = {version = "4.0.0-beta.3", features = ["tls_rustls"], default-features = false}
 serde = "1.0.123"
 serde_json = "1.0.62"
 config = "0.10.1"
-fcm = {version="0.8.1", git="https://github.com/kate-shine/fcm-rust.git", branch="shine/reqwest-port", features=["rustls"], default-features=false}
+fcm = {version = "0.8.1", git = "https://github.com/kate-shine/fcm-rust.git", branch = "shine/reqwest-port", features = ["rustls"], default-features = false}
