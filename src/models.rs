@@ -1,5 +1,5 @@
 /*
- *   Matrix Push Gateway The Next Generation
+ *   Matrix Hedwig
  *   Copyright (C) 2019, 2020, 2021 Famedly GmbH
  *
  *   This program is free software: you can redistribute it and/or modify
@@ -23,6 +23,31 @@ use std::fmt::{Display, Formatter, Result as FmtResult};
 #[derive(Deserialize, Debug)]
 pub struct PushNotification {
     pub notification: Notification,
+}
+
+impl PushNotification {
+    /// Collect the pushkeys and check if the app_id of each device matches
+    pub fn pushkeys_for_app_id(&self, app_id: &String) -> Vec<&String> {
+        self.notification
+            .devices
+            .iter()
+            .filter_map(|device| {
+                if &device.app_id == app_id || device.app_id == format!("{}.data_message", app_id) {
+                    Some(&device.pushkey)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    pub fn notification_count(&self) -> u16 {
+        self.notification
+            .counts
+            .as_ref()
+            .and_then(|counts| counts.unread)
+            .unwrap_or(0)
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]

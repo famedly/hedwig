@@ -1,4 +1,4 @@
-# Matrix Push Gateway The next Generation
+# Matrix Hedwig
 This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) application. It implements the [Matrix Push Notification API r0.1.1](https://matrix.org/docs/spec/push_gateway/r0.1.1) and supports [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging/) only.
 
 ## Features:

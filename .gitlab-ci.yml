@@ -31,6 +31,8 @@ cargo-build-amd64:
   before_script:
     - apt-get update -yqq
     - apt-get install -yqq --no-install-recommends build-essential
+    - rustup component add clippy
+    - rustup component add rustfmt
   script:
     - rustc --version && cargo --version  # Print version info for debugging
     - cargo build --release
