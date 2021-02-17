@@ -8,7 +8,7 @@ cargo-test:
   cache:
     paths:
       - target/
-    key: test
+    key: build_cache
   before_script:
     - apt-get update -yqq
     - apt-get install -yqq --no-install-recommends build-essential
@@ -27,7 +27,7 @@ cargo-build-amd64:
   cache:
     paths:
       - target/
-    key: test
+    key: build_cache
   before_script:
     - apt-get update -yqq
     - apt-get install -yqq --no-install-recommends build-essential
@@ -47,7 +47,7 @@ cargo-build-armv7:
   cache:
     paths:
       - target/
-    key: test
+    key: build_cache
   before_script:
     - apt-get update -yqq
     - apt-get install -yqq --no-install-recommends build-essential gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
@@ -60,7 +60,7 @@ cargo-build-armv7:
     - mv config.sample.toml ./target/release/config.toml
   artifacts:
     paths:
-      - target/release/
+      - target/armv7-unknown-linux-gnueabihf/release/
 
 cargo-build-aarch64:
   stage: build
@@ -71,7 +71,7 @@ cargo-build-aarch64:
   cache:
     paths:
       - target/
-    key: test
+    key: build_cache
   before_script:
     - apt-get update -yqq
     - apt-get install -yqq --no-install-recommends build-essential gcc-8-aarch64-linux-gnu libc6-dev-arm64-cross
@@ -84,4 +84,4 @@ cargo-build-aarch64:
     - mv config.sample.toml ./target/release/config.toml
   artifacts:
     paths:
-      - target/release/
+      - target/aarch64-unknown-linux-gnu/release/
