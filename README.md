@@ -16,6 +16,23 @@ This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) applic
 2. Add your Firebase Admin Key to the `config.toml` file
 
 3. Run the binary
+```
+./matrix-hedwig
+```
+
+## Proxy
+
+You should configure a proxy with a working SSL connection to the gateway.
+
+### Apache2 example
+
+```
+<Location "/_matrix/push/">
+  ProxyPass "http://localhost:7025/_matrix/push/"
+  SetEnv force-proxy-request-1.0 1
+  SetEnv proxy-nokeepalive 1
+</Location>
+```
 
 # How to build for your platform
 
