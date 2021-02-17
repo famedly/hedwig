@@ -73,10 +73,13 @@ async fn process_notification(
         })?;
 
     // Set additional keys for the notification message
+    let title = config
+        .fcm_notification_title
+        .replace("<count>", &unread_count_string);
     if !data_message_mode && !is_clearing_notification {
         let mut notification = fcm::NotificationBuilder::new();
         notification
-            .title(&config.fcm_notification_title)
+            .title(&title)
             .click_action(&config.fcm_notification_click_action)
             .body(&config.fcm_notification_body)
             .badge(&unread_count_string)
