@@ -20,7 +20,7 @@ use actix_web::{web, App, HttpResponse, HttpServer};
 mod models;
 mod settings;
 use actix_web::error::JsonPayloadError;
-use fcm::FcmResponse;
+use fcm::{FcmResponse, Priority};
 use models::{ErrCode, MatrixError, PushGatewayResponse, PushNotification};
 use settings::Settings;
 
@@ -65,6 +65,7 @@ async fn process_notification(
 
     // Set the data for fcm here
     builder.collapse_key(&config.fcm_collapse_key);
+    builder.priority(Priority::High);
     builder
         .data(&push_notification.notification)
         .map_err(|e| MatrixError {
