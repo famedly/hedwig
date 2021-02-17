@@ -12,3 +12,5 @@ serde = "1.0.123"
 serde_json = "1.0.62"
 config = "0.10.1"
 fcm = {version = "0.8.1", git = "https://github.com/kate-shine/fcm-rust.git", branch = "shine/reqwest-port", features = ["rustls"], default-features = false}
+tracing = "0.1"
+tracing-subscriber = "0.2.0"
