@@ -23,12 +23,15 @@ use actix_web::error::JsonPayloadError;
 use fcm::{FcmResponse, Priority};
 use models::{ErrCode, MatrixError, PushGatewayResponse, PushNotification};
 use settings::Settings;
+use tracing::{info, Level};
+use tracing_subscriber::FmtSubscriber;
 
 async fn process_notification(
     push_notification: web::Json<PushNotification>,
     config: web::Data<Settings>,
     fcm_client: web::Data<fcm::Client>,
 ) -> Result<HttpResponse, MatrixError> {
+    info!("========> NEW PUSH NOTIFICATION RECEIVED <========");
     let registration_ids = push_notification.pushkeys_for_app_id(&config.app_id);
 
     if registration_ids.is_empty() {
@@ -47,14 +50,19 @@ async fn process_notification(
             errcode: ErrCode::MBadJson,
         })?;
 
+    info!("Registration IDs: {:?}", &registration_ids);
+
     // Whether the push gateway should send only a data message - we have a specific app_id suffix for this
     let data_message_mode = first_device.app_id == format!("{}.data_message", config.app_id);
+    info!("Data message mode: {}", &data_message_mode);
 
     // Some notifications may just inform the device that there are no more unread rooms
     let is_clearing_notification = push_notification.notification.event_id.is_none();
+    info!("Is clearing notification: {}", &is_clearing_notification);
 
     // String representation of the unread counter with "0" as default
     let unread_count_string = push_notification.notification_count().to_string();
+    info!("unread count: {}", &unread_count_string);
 
     // Get the MessageBuilder - either we need to send the notification to one or to multiple devices
     let mut builder = if registration_ids.len() == 1 {
@@ -101,7 +109,7 @@ async fn process_notification(
             .iter()
             .filter_map(|result| result.error.and_then(|_| result.registration_id.clone()))
             .collect();
-
+        info!("Rejected: {:?}", &rejected);
         Ok(HttpResponse::Ok().json(&PushGatewayResponse { rejected }))
     } else {
         Err(MatrixError {
@@ -113,8 +121,13 @@ async fn process_notification(
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
+    tracing::subscriber::set_global_default(subscriber).expect("Setting default subscriber failed");
+
     let config = Settings::load().expect("Config file (config.toml) is not present");
-    println!("Now listening to port {}", config.server_port);
+    info!("Now listening to port {}", config.server_port);
     let app_config = web::Data::new(config.clone());
     let fcm_client = web::Data::new(fcm::Client::new());
 

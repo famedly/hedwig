@@ -19,6 +19,7 @@
 use actix_web::{http, web, ResponseError};
 use serde::{Deserialize, Serialize};
 use std::fmt::{Display, Formatter, Result as FmtResult};
+use tracing::error;
 
 #[derive(Deserialize, Debug)]
 pub struct PushNotification {
@@ -121,6 +122,7 @@ impl Display for MatrixError {
 
 impl ResponseError for MatrixError {
     fn error_response(&self) -> web::HttpResponse {
+        error!("{}", &self.error);
         let status_code = match self.errcode {
             ErrCode::MUnknown => http::StatusCode::BAD_GATEWAY,
             _ => http::StatusCode::BAD_REQUEST,
