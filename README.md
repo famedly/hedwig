@@ -11,7 +11,7 @@ This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) applic
 - Endpoint for stats
 
 # Get started
-1. Download the latest build from the CI: [amd64](https://gitlab.com/famedly/services/hedwig/-/jobs/artifacts/main/browse?job=cargo-build-amd64)
+1. Download the latest build from the CI: [amd64](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-amd64), [armv7](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-armv7)
 
 2. Add your Firebase Admin Key to the `config.toml` file
 
