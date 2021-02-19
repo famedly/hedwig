@@ -5,10 +5,11 @@ This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) applic
 - Implements the `POST /_matrix/push/v1/notify` endpoint
 - Forwards notifications from the format `event_id_only`
 - Returns invalid push keys in the `rejected` response field
+- Health status endpoint at /health
+- Prometheus metrics at /metrics
 
 ## Planned:
 - Better logging
-- Endpoint for stats
 
 # Get started
 1. Download the latest build from the CI: [amd64](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-amd64), [armv7](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-armv7)
