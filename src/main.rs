@@ -20,15 +20,20 @@ use actix_web::{web, App, HttpResponse, HttpServer};
 mod models;
 mod settings;
 use actix_web::error::JsonPayloadError;
+use actix_web::middleware::Logger;
+use actix_web_prom::PrometheusMetrics;
 use fcm::{FcmResponse, Priority};
 use models::{ErrCode, MatrixError, PushGatewayResponse, PushNotification};
+use prometheus::{opts, IntCounterVec};
 use settings::Settings;
+use std::convert::TryInto;
 use tracing::{info, Level};
 use tracing_subscriber::FmtSubscriber;
 
 async fn process_notification(
     push_notification: web::Json<PushNotification>,
     config: web::Data<Settings>,
+    counter: web::Data<IntCounterVec>,
     fcm_client: web::Data<fcm::Client>,
 ) -> Result<HttpResponse, MatrixError> {
     info!("========> NEW PUSH NOTIFICATION RECEIVED <========");
@@ -49,6 +54,15 @@ async fn process_notification(
             error: String::from("No devices were provided"),
             errcode: ErrCode::MBadJson,
         })?;
+
+    counter.with_label_values(&["devices"]).inc_by(
+        push_notification
+            .notification
+            .devices
+            .len()
+            .try_into()
+            .unwrap(),
+    );
 
     info!("Registration IDs: {:?}", &registration_ids);
 
@@ -110,8 +124,13 @@ async fn process_notification(
             .filter_map(|result| result.error.and_then(|_| result.registration_id.clone()))
             .collect();
         info!("Rejected: {:?}", &rejected);
+        counter
+            .with_label_values(&["rejected"])
+            .inc_by(rejected.len().try_into().unwrap());
+
         Ok(HttpResponse::Ok().json(&PushGatewayResponse { rejected }))
     } else {
+        counter.with_label_values(&["errored"]).inc();
         Err(MatrixError {
             error: String::from("Invalid response from upstream push service"),
             errcode: ErrCode::MUnknown,
@@ -126,6 +145,15 @@ async fn main() -> std::io::Result<()> {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("Setting default subscriber failed");
 
+    let counter_opts = opts!("notifications", "Notification statistics").namespace("hedwig");
+    let counter = IntCounterVec::new(counter_opts, &["name"]).unwrap();
+
+    let prometheus = PrometheusMetrics::new("api", Some("/metrics"), None);
+    prometheus
+        .registry
+        .register(Box::new(counter.clone()))
+        .expect("registering prometheus metrics");
+
     let config = Settings::load().expect("Config file (config.toml) is not present");
     info!("Now listening to port {}", config.server_port);
     let app_config = web::Data::new(config.clone());
@@ -135,7 +163,20 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(app_config.clone())
             .app_data(fcm_client.clone())
+            .app_data(web::Data::new(counter.clone()))
             .app_data(web::JsonConfig::default().error_handler(json_error_handler))
+            .wrap(Logger::default())
+            .wrap(prometheus.clone())
+            .service(web::resource("/favicon.ico").to(|| {
+                HttpResponse::Ok()
+                    .content_type("image/png")
+                    .body(&include_bytes!("../static/favicon.ico")[..])
+            }))
+            .service(web::resource("/health").to(|| actix_web::HttpResponse::Ok().finish()))
+            .service(
+                web::resource("/version")
+                    .to(|| actix_web::HttpResponse::Ok().body(env!("VERGEN_GIT_SEMVER"))),
+            )
             .route(
                 "/_matrix/push/v1/notify",
                 web::post().to(process_notification),
