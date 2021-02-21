@@ -5,14 +5,15 @@ This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) applic
 - Implements the `POST /_matrix/push/v1/notify` endpoint
 - Forwards notifications from the format `event_id_only`
 - Returns invalid push keys in the `rejected` response field
-- Health status endpoint at /health
-- Prometheus metrics at /metrics
+- Health status endpoint at `GET /health`
+- Version endpoint at `GET /version`
+- Prometheus metrics at `GET /metrics`
 
 ## Planned:
 - Better logging
 
 # Get started
-1. Download the latest build from the CI: [amd64](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-amd64), [armv7](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-armv7)
+1. Download the latest build from the CI: [amd64](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-amd64), [armv7](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-armv7), [aarch64](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-aarch64)
 
 2. Add your Firebase Admin Key to the `config.toml` file
 
@@ -28,8 +29,24 @@ You should configure a proxy with a working SSL connection to the gateway.
 ### Apache2 example
 
 ```
-<Location "/_matrix/push/">
-  ProxyPass "http://localhost:7025/_matrix/push/"
+<Location "/_matrix/push/v1/">
+  ProxyPass "http://localhost:7025/_matrix/push/v1/"
+  SetEnv force-proxy-request-1.0 1
+  SetEnv proxy-nokeepalive 1
+</Location>
+```
+
+And optional:
+
+```
+<Location "/_matrix/push/health">
+  ProxyPass "http://localhost:7025/health"
+  SetEnv force-proxy-request-1.0 1
+  SetEnv proxy-nokeepalive 1
+</Location>
+
+<Location "/_matrix/push/version">
+  ProxyPass "http://localhost:7025/version"
   SetEnv force-proxy-request-1.0 1
   SetEnv proxy-nokeepalive 1
 </Location>
