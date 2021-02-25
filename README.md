@@ -22,6 +22,12 @@ This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) applic
 ./matrix-hedwig
 ```
 
+Log level can be set by env variable RUST_LOG (possible values: error, info, debug)
+
+```
+RUST_LOG=debug ./matrix-hedwig
+```
+
 ## Proxy
 
 You should configure a proxy with a working SSL connection to the gateway.
