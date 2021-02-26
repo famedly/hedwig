@@ -121,7 +121,12 @@ async fn process_notification(
     {
         let rejected: Vec<String> = results
             .iter()
-            .filter_map(|result| result.error.and_then(|_| result.registration_id.clone()))
+            .enumerate()
+            .filter_map(|(idx, result)| {
+                result
+                    .error
+                    .and_then(|_| registration_ids.get(idx).cloned().cloned())
+            })
             .collect();
         info!("Rejected: {:?}", &rejected);
         counter
