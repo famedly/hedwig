@@ -27,8 +27,8 @@ use models::{ErrCode, MatrixError, PushGatewayResponse, PushNotification};
 use prometheus::{opts, IntCounterVec};
 use settings::Settings;
 use std::convert::TryInto;
-use tracing::{info, Level};
-use tracing_subscriber::FmtSubscriber;
+use tracing::info;
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 async fn process_notification(
     push_notification: web::Json<PushNotification>,
@@ -141,7 +141,7 @@ async fn process_notification(
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     let subscriber = FmtSubscriber::builder()
-        .with_max_level(Level::INFO)
+        .with_env_filter(EnvFilter::from_default_env())
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("Setting default subscriber failed");
 
