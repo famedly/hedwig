@@ -27,7 +27,7 @@ use models::{ErrCode, MatrixError, PushGatewayResponse, PushNotification};
 use prometheus::{opts, IntCounterVec};
 use settings::Settings;
 use std::convert::TryInto;
-use tracing::info;
+use tracing::{debug, info};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 async fn process_notification(
@@ -36,7 +36,6 @@ async fn process_notification(
     counter: web::Data<IntCounterVec>,
     fcm_client: web::Data<fcm::Client>,
 ) -> Result<HttpResponse, MatrixError> {
-    info!("========> NEW PUSH NOTIFICATION RECEIVED <========");
     let registration_ids = push_notification.pushkeys_for_app_id(&config.app_id);
 
     if registration_ids.is_empty() {
@@ -64,19 +63,16 @@ async fn process_notification(
             .unwrap(),
     );
 
-    info!("Registration IDs: {:?}", &registration_ids);
-
     // Whether the push gateway should send only a data message - we have a specific app_id suffix for this
     let data_message_mode = first_device.app_id == format!("{}.data_message", config.app_id);
-    info!("Data message mode: {}", &data_message_mode);
 
     // Some notifications may just inform the device that there are no more unread rooms
     let is_clearing_notification = push_notification.notification.event_id.is_none();
-    info!("Is clearing notification: {}", &is_clearing_notification);
 
     // String representation of the unread counter with "0" as default
     let unread_count_string = push_notification.notification_count().to_string();
-    info!("unread count: {}", &unread_count_string);
+
+    debug!("Received push notification for registration-ID(s) {:?}, data message mode = {}, as clearing notification = {} and unread count {}", &registration_ids, &data_message_mode, &is_clearing_notification, &unread_count_string);
 
     // Get the MessageBuilder - either we need to send the notification to one or to multiple devices
     let mut builder = if registration_ids.len() == 1 {
@@ -128,7 +124,7 @@ async fn process_notification(
                     .and_then(|_| registration_ids.get(idx).cloned().cloned())
             })
             .collect();
-        info!("Rejected: {:?}", &rejected);
+        debug!("Rejected: {:?}", &rejected);
         counter
             .with_label_values(&["rejected"])
             .inc_by(rejected.len().try_into().unwrap());
