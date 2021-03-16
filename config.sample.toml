@@ -1,4 +1,5 @@
 fcm_admin_key = "1234"
+server_bind_ip = 127.0.0.1
 server_port =  7022
 app_id = "org.matrix.awesome_client"
 fcm_collapse_key = "org.matrix.default_notification"
