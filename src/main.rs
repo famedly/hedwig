@@ -156,7 +156,10 @@ async fn main() -> std::io::Result<()> {
         .expect("registering prometheus metrics");
 
     let config = Settings::load().expect("Config file (config.toml) is not present");
-    info!("Now listening to port {}", config.server_port);
+    info!(
+        "Now listening on {}:{}",
+        config.server_bind_ip, config.server_port
+    );
     let app_config = web::Data::new(config.clone());
     let fcm_client = web::Data::new(fcm::Client::new());
 
@@ -183,7 +186,7 @@ async fn main() -> std::io::Result<()> {
                 web::post().to(process_notification),
             )
     })
-    .bind(("127.0.0.1", config.server_port))?
+    .bind((config.server_bind_ip, config.server_port))?
     .run()
     .await
 }

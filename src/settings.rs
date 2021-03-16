@@ -22,6 +22,7 @@ use serde::Deserialize;
 #[derive(Deserialize, Debug, Clone)]
 pub struct Settings {
     pub fcm_admin_key: String,
+    pub server_bind_ip: String,
     pub server_port: u16,
     pub app_id: String,
     pub fcm_collapse_key: String,
