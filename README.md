@@ -58,6 +58,21 @@ And optional:
 </Location>
 ```
 
+## Docker
+
+We provide a docker image with the compiled binary inside it. To use it, you need to map your
+`config.toml` into `/opt/hedwig/config.toml` inside the container, and then you can route your
+traffic to the configured listening port (default is `7022`).
+
+Example usage with docker cli:
+
+```
+docker run --rm --name hedwig \
+    -v ./config.toml:/opt/hedwig/config.toml \
+    -p 127.0.0.1:7022:7022 \
+    registry.gitlab.com/famedly/services/hedwig:latest
+```
+
 # How to build for your platform
 
 1. [Install Rust and Cargo](https://doc.rust-lang.org/cargo/getting-started/installation.html)
