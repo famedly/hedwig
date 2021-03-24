@@ -16,63 +16,52 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use actix_web::{web, App, HttpResponse, HttpServer};
-mod models;
-mod settings;
+use std::convert::TryInto;
+
 use actix_web::error::JsonPayloadError;
 use actix_web::middleware::Logger;
+use actix_web::{web, App, HttpResponse, HttpServer};
 use actix_web_prom::PrometheusMetrics;
 use fcm::{FcmResponse, Priority};
-use models::{ErrCode, MatrixError, PushGatewayResponse, PushNotification};
-use prometheus::{opts, IntCounterVec};
-use settings::Settings;
-use std::convert::TryInto;
+use prometheus::{opts, IntCounterVec, Registry};
 use tracing::{debug, info};
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
+
+mod lib;
+
+use crate::lib::LastSuccessfulCollector;
+use lib::models;
+use lib::models::{ErrCode, MatrixError, PushGatewayResponse, PushNotification};
+use lib::{DeviceCounter, NotificationCounter, ProcessedNotification};
+use settings::Settings;
+
+mod settings;
 
 async fn process_notification(
     push_notification: web::Json<PushNotification>,
     config: web::Data<Settings>,
-    counter: web::Data<IntCounterVec>,
+    notification_counter: web::Data<NotificationCounter>,
+    last_notification_gauge: web::Data<LastSuccessfulCollector>,
+    device_counter: web::Data<DeviceCounter>,
     fcm_client: web::Data<fcm::Client>,
 ) -> Result<HttpResponse, MatrixError> {
-    let registration_ids = push_notification.pushkeys_for_app_id(&config.app_id);
-
+    let processed_notification =
+        ProcessedNotification::process(&push_notification, &config.app_id)?;
+    let registration_ids = processed_notification.push_keys();
     if registration_ids.is_empty() {
         return Err(MatrixError {
             error: String::from("No registration IDs with the matching app ID provided"),
             errcode: ErrCode::MBadJson,
         });
     }
-
-    let first_device = push_notification
-        .notification
-        .devices
-        .first()
-        .ok_or(MatrixError {
-            error: String::from("No devices were provided"),
-            errcode: ErrCode::MBadJson,
-        })?;
-
-    counter.with_label_values(&["devices"]).inc_by(
-        push_notification
-            .notification
-            .devices
-            .len()
-            .try_into()
-            .unwrap(),
-    );
-
-    // Whether the push gateway should send only a data message - we have a specific app_id suffix for this
-    let data_message_mode = first_device.app_id == format!("{}.data_message", config.app_id);
-
-    // Some notifications may just inform the device that there are no more unread rooms
-    let is_clearing_notification = push_notification.notification.event_id.is_none();
+    device_counter
+        .with_label_values(&[])
+        .inc_by(processed_notification.device_count().try_into().unwrap());
 
     // String representation of the unread counter with "0" as default
-    let unread_count_string = push_notification.notification_count().to_string();
+    let unread_count_string = processed_notification.unread_count().to_string();
 
-    debug!("Received push notification for registration-ID(s) {:?}, data message mode = {}, as clearing notification = {} and unread count {}", &registration_ids, &data_message_mode, &is_clearing_notification, &unread_count_string);
+    debug!("Received push notification for registration-ID(s) {:?}, message type = {} and unread count {}", &registration_ids, &processed_notification.r#type(), &unread_count_string);
 
     // Get the MessageBuilder - either we need to send the notification to one or to multiple devices
     let mut builder = if registration_ids.len() == 1 {
@@ -85,17 +74,18 @@ async fn process_notification(
     builder.collapse_key(&config.fcm_collapse_key);
     builder.priority(Priority::High);
     builder
-        .data(&push_notification.notification)
+        .data(&processed_notification.notification)
         .map_err(|e| MatrixError {
             errcode: ErrCode::MBadJson,
             error: e.to_string(),
         })?;
 
     // Set additional keys for the notification message
+
     let title = config
         .fcm_notification_title
         .replace("<count>", &unread_count_string);
-    if !data_message_mode && !is_clearing_notification {
+    if let lib::NotificationType::Notification = processed_notification.r#type() {
         let mut notification = fcm::NotificationBuilder::new();
         notification
             .title(&title)
@@ -124,14 +114,38 @@ async fn process_notification(
                     .and_then(|_| registration_ids.get(idx).cloned().cloned())
             })
             .collect();
+
+        let succeeded: Vec<String> = results
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, result)| {
+                if result.error.is_none() {
+                    registration_ids.get(idx).cloned().cloned()
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        if !succeeded.is_empty() {
+            last_notification_gauge.update();
+        }
+
         debug!("Rejected: {:?}", &rejected);
-        counter
-            .with_label_values(&["rejected"])
+        debug!("Succeeded: {:?}", &succeeded);
+
+        notification_counter
+            .with_label_values(&[&processed_notification.r#type().to_string(), "rejected"])
             .inc_by(rejected.len().try_into().unwrap());
+        notification_counter
+            .with_label_values(&[&processed_notification.r#type().to_string(), "succeeded"])
+            .inc_by(succeeded.len().try_into().unwrap());
 
         Ok(HttpResponse::Ok().json(&PushGatewayResponse { rejected }))
     } else {
-        counter.with_label_values(&["errored"]).inc();
+        notification_counter
+            .with_label_values(&[&processed_notification.r#type().to_string(), "errored"])
+            .inc_by(registration_ids.len().try_into().unwrap());
         Err(MatrixError {
             error: String::from("Invalid response from upstream push service"),
             errcode: ErrCode::MUnknown,
@@ -146,15 +160,38 @@ async fn main() -> std::io::Result<()> {
         .finish();
     tracing::subscriber::set_global_default(subscriber).expect("Setting default subscriber failed");
 
-    let counter_opts = opts!("notifications", "Notification statistics").namespace("hedwig");
-    let counter = IntCounterVec::new(counter_opts, &["name"]).unwrap();
+    let notification_counter = NotificationCounter(
+        IntCounterVec::new(
+            opts!("notifications_total", "Notification statistics").namespace("hedwig"),
+            &["type", "status"],
+        )
+        .unwrap(),
+    );
+    let device_counter = DeviceCounter(
+        IntCounterVec::new(
+            opts!("devices_total", "Notification statistics").namespace("hedwig"),
+            &[],
+        )
+        .unwrap(),
+    );
 
-    let prometheus = PrometheusMetrics::new("api", Some("/metrics"), None);
-    prometheus
-        .registry
-        .register(Box::new(counter.clone()))
-        .expect("registering prometheus metrics");
+    let last_successful_gauge = lib::LastSuccessfulCollector::new(
+        "last_notification_seconds",
+        "Seconds since the last successful notification was sent",
+    );
 
+    let registry = Registry::new();
+    registry
+        .register(Box::new(notification_counter.0.clone()))
+        .expect("Creating a prometheus registry");
+    registry
+        .register(Box::new(device_counter.0.clone()))
+        .expect("Creating a prometheus registry");
+    registry
+        .register(Box::new(last_successful_gauge.clone()))
+        .expect("Creating a prometheus registry");
+    let prometheus = PrometheusMetrics::new_with_registry(registry, "api", Some("/metrics"), None)
+        .expect("Creating prometheus metrics");
     let config = Settings::load().expect("Config file (config.toml) is not present");
     info!(
         "Now listening on {}:{}",
@@ -167,7 +204,9 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(app_config.clone())
             .app_data(fcm_client.clone())
-            .app_data(web::Data::new(counter.clone()))
+            .app_data(web::Data::new(notification_counter.clone()))
+            .app_data(web::Data::new(device_counter.clone()))
+            .app_data(web::Data::new(last_successful_gauge.clone()))
             .app_data(web::JsonConfig::default().error_handler(json_error_handler))
             .wrap(Logger::default())
             .wrap(prometheus.clone())

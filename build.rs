@@ -1,7 +1,7 @@
 extern crate vergen;
 
-use vergen::{gen, ConstantsFlags};
+use vergen::{vergen, Config};
 
 fn main() {
-    gen(ConstantsFlags::all()).expect("Unable to generate cargo keys!");
+    vergen(Config::default()).expect("Unable to generate cargo keys!");
 }

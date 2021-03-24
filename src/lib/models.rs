@@ -27,27 +27,11 @@ pub struct PushNotification {
 }
 
 impl PushNotification {
-    /// Collect the pushkeys and check if the app_id of each device matches
-    pub fn pushkeys_for_app_id(&self, app_id: &String) -> Vec<&String> {
-        self.notification
-            .devices
-            .iter()
-            .filter_map(|device| {
-                if &device.app_id == app_id || device.app_id == format!("{}.data_message", app_id) {
-                    Some(&device.pushkey)
-                } else {
-                    None
-                }
-            })
-            .collect()
-    }
-
-    pub fn notification_count(&self) -> u16 {
-        self.notification
-            .counts
-            .as_ref()
-            .and_then(|counts| counts.unread)
-            .unwrap_or(0)
+    pub fn first_device(&self) -> Result<&Device, MatrixError> {
+        self.notification.devices.first().ok_or(MatrixError {
+            error: String::from("No devices were provided"),
+            errcode: ErrCode::MBadJson,
+        })
     }
 }
 
