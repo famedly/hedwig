@@ -100,10 +100,10 @@ sudo apt install openssl-dev
 We think that software for healthcare should be open source, so we publish most 
 parts of our source code at [gitlab.com/famedly](https://gitlab.com/famedly).
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of
+Please read [CONTRIBUTING.md](famedly/services/hedwig/CONTRIBUTING.md) for details on our code of
 conduct, and the process for submitting pull requests to us.
 
-For licensing information of this project, have a look at the [LICENSE.md](LICENSE.mD)
+For licensing information of this project, have a look at the [LICENSE.md](famedly/services/hedwig/LICENSE.md)
 file within the repository.
 
 If you compile the open source software that we make available to develop your
