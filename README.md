@@ -28,6 +28,12 @@ Log level can be set by env variable RUST_LOG (possible values: error, info, deb
 RUST_LOG=debug ./matrix-hedwig
 ```
 
+## Data Messages and Notification Messages
+
+In FCM there are two kind of messages: Data Messages and Notification Messages. Read more about it here: https://firebase.google.com/docs/cloud-messaging/concept-options
+
+By default Hedwig is sending Notification Messages which payload you can configure in the `config.toml`. To send Data Messages, just append `.data_message` to the APP ID.
+
 ## Proxy
 
 You should configure a proxy with a working SSL connection to the gateway.
