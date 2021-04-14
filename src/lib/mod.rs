@@ -59,6 +59,7 @@ impl ProcessedNotification<'_, '_> {
     // Some notifications may just inform the device that there are no more unread rooms
     pub fn is_clearing(&self) -> bool {
         self.notification.event_id.is_none()
+            || (!self.is_data_message() && self.unread_count() == 0) // Even if there are 0 unread, we should let data message recipient decide what they want to do
     }
 
     // Whether the push gateway should send only a data message - we have a specific app_id suffix for this
