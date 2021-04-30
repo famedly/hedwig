@@ -1,0 +1,18 @@
+log:
+  level: INFO
+
+server:
+  bind_address: 127.0.0.1
+  port: 7022
+
+hedwig:
+  app_id: "org.matrix.awesome_client"
+  fcm_admin_key: "1234"
+  fcm_collapse_key: "org.matrix.default_notification"
+  fcm_notification_click_action: "FLUTTER_NOTIFICATION_CLICK"
+  fcm_notification_title: "<count> unread rooms"
+  fcm_notification_body: "Open app to read the messages"
+  fcm_notification_sound: "default"
+  fcm_notification_icon: "notifications_icon"
+  fcm_notification_tag: "org.matrix.default_notification"
+  fcm_notification_android_channel_id: "org.matrix.app.message"

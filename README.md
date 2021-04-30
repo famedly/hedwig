@@ -15,24 +15,18 @@ This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) applic
 # Get started
 1. Download the latest build from the CI: [amd64](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-amd64), [armv7](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-armv7), [aarch64](https://gitlab.com/famedly/services/famedly-push-gateway-ng/-/jobs/artifacts/main/browse?job=cargo-build-aarch64)
 
-2. Add your Firebase Admin Key to the `config.toml` file
+2. Add your Firebase Admin Key to the `config.yaml` file
 
 3. Run the binary
 ```
 ./matrix-hedwig
 ```
 
-Log level can be set by env variable RUST_LOG (possible values: error, info, debug)
-
-```
-RUST_LOG=debug ./matrix-hedwig
-```
-
 ## Data Messages and Notification Messages
 
 In FCM there are two kind of messages: Data Messages and Notification Messages. Read more about it here: https://firebase.google.com/docs/cloud-messaging/concept-options
 
-By default Hedwig is sending Notification Messages which payload you can configure in the `config.toml`. To send Data Messages, just append `.data_message` to the APP ID.
+By default Hedwig is sending Notification Messages which payload you can configure in the `config.yaml`. To send Data Messages, just append `.data_message` to the APP ID.
 
 ## Proxy
 
@@ -67,7 +61,7 @@ And optional:
 ## Docker
 
 We provide a docker image with the compiled binary inside it. To use it, you need to map your
-`config.toml` into `/opt/hedwig/config.toml` inside the container, and then you can route your
+`config.yaml` into `/opt/hedwig/config.yaml` inside the container, and then you can route your
 traffic to the configured listening port (default is `7022`).
 
 Example usage with docker cli:

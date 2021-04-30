@@ -20,11 +20,9 @@ use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug, Clone)]
-pub struct Settings {
-    pub fcm_admin_key: String,
-    pub server_bind_ip: String,
-    pub server_port: u16,
+pub struct Hedwig {
     pub app_id: String,
+    pub fcm_admin_key: String,
     pub fcm_collapse_key: String,
     pub fcm_notification_title: String,
     pub fcm_notification_body: String,
@@ -35,12 +33,30 @@ pub struct Settings {
     pub fcm_notification_click_action: String,
 }
 
+#[derive(Debug, Deserialize, Clone)]
+pub struct Server {
+    pub port: u16,
+    pub bind_address: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Log {
+    pub level: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Settings {
+    pub log: Log,
+    pub server: Server,
+    pub hedwig: Hedwig,
+}
+
 impl Settings {
     pub fn load() -> Result<Self, ConfigError> {
         let mut conf = Config::new();
-
-        conf.merge(File::with_name("config.toml"))?;
+        conf.merge(File::with_name("config.yaml"))?;
         conf.merge(Environment::with_prefix("push_gw").separator("_"))?;
+        conf.set_default("log.level", "INFO")?;
         conf.try_into()
     }
 }
