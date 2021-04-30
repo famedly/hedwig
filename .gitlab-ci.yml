@@ -1,62 +1,33 @@
+include:
+  - project: 'famedly/templates/ci-cd'
+    ref: v0.1.0
+    file: '/docker.yml'
+  - project: 'famedly/templates/ci-cd'
+    ref: v0.1.0
+    file: '/rust.yml'
+
 stages:
   - test
   - build
-  - docker
+  - deploy
 
-cargo-test:
-  stage: test
-  image: rust:latest
-  cache:
-    paths:
-      - target/
-    key: build_cache
-  before_script:
-    - apt-get update -yqq
-    - apt-get install -yqq --no-install-recommends build-essential
-    - rustup component add clippy
-    - rustup component add rustfmt
-  script:
-    - rustc --version && cargo --version  # Print version info for debugging
-    - cargo fmt -- --check
-    - cargo check
-    - cargo clippy
-    - cargo test --all --verbose
+cargo-check:
+  extends: .cargo_check
 
 cargo-build-amd64:
-  stage: build
-  image: rust:latest
-  cache:
-    paths:
-      - target/
-    key: build_cache
-  before_script:
-    - apt-get update -yqq
-    - apt-get install -yqq --no-install-recommends build-essential
-    - rustup component add clippy
-    - rustup component add rustfmt
+  extends: .cargo_build
   script:
-    - rustc --version && cargo --version  # Print version info for debugging
     - cargo build --release
     - mv config.sample.toml ./target/release/config.toml
-  artifacts:
-    paths:
-      - target/release/
 
 cargo-build-armv7:
-  stage: build
-  image: rust:latest
-  cache:
-    paths:
-      - target/
-    key: build_cache
-  before_script:
-    - apt-get update -yqq
-    - apt-get install -yqq --no-install-recommends build-essential gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
-    - mv cargo/config /usr/local/cargo
-    - rustup target add armv7-unknown-linux-gnueabihf
-
+  extends: .cargo_build
+  variables:
+    RUST_ADDITIONAL_PACKAGES: "gcc-arm-linux-gnueabihf libc6-dev-armhf-cross"
   script:
-    - rustc --version && cargo --version  # Print version info for debugging
+    - mkdir .cargo && mv cargo/config .cargo/config
+    - rustup target add armv7-unknown-linux-gnueabihf
+    - rustup show
     - cargo build --target armv7-unknown-linux-gnueabihf --release
     - mv config.sample.toml ./target/release/config.toml
   artifacts:
@@ -64,58 +35,67 @@ cargo-build-armv7:
       - target/armv7-unknown-linux-gnueabihf/release/
 
 cargo-build-aarch64:
-  stage: build
-  image: rust:latest
+  extends: .cargo_build
   variables:
     TARGET_CC: "/usr/bin/aarch64-linux-gnu-gcc-8"
     TARGET_AR: "/usr/bin/aarch64-linux-gnu-gcc-ar-8"
-  cache:
-    paths:
-      - target/
-    key: build_cache
-  before_script:
-    - apt-get update -yqq
-    - apt-get install -yqq --no-install-recommends build-essential gcc-8-aarch64-linux-gnu libc6-dev-arm64-cross
-    - mv cargo/config /usr/local/cargo
-    - rustup target add aarch64-unknown-linux-gnu
-
+    RUST_ADDITIONAL_PACKAGES: "gcc-8-aarch64-linux-gnu libc6-dev-arm64-cross"
   script:
-    - rustc --version && cargo --version  # Print version info for debugging
+    - mkdir .cargo && mv cargo/config .cargo/config
+    - rustup target add aarch64-unknown-linux-gnu
+    - rustup show
     - cargo build --target aarch64-unknown-linux-gnu --release
     - mv config.sample.toml ./target/release/config.toml
   artifacts:
     paths:
       - target/aarch64-unknown-linux-gnu/release/
 
-.docker: &docker_template
-  image: docker:latest
-  stage: docker
-  services:
-    - docker:dind
-  before_script:
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-
 docker-releases:
-  <<: *docker_template
-  script:
-    - docker build --pull -t "${CI_REGISTRY_IMAGE}:latest" -t "${CI_REGISTRY_IMAGE}:${CI_COMMIT_TAG}" .
-    - docker push "${CI_REGISTRY_IMAGE}:latest"
-    - docker push "${CI_REGISTRY_IMAGE}:${CI_COMMIT_TAG}"
-  rules:
-    - if: '$CI_COMMIT_TAG && $CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+  extends: .docker_releases
+  needs: ["cargo-build-amd64"]
+
+docker-releases-armv7:
+  extends: .docker_releases
+  needs: ["cargo-build-armv7"]
+  variables:
+    DOCKER_TAG: "${CI_COMMIT_TAG}-armv7"
+
+docker-releases-aarch64:
+  extends: .docker_releases
+  needs: ["cargo-build-aarch64"]
+  variables:
+    DOCKER_TAG: "${CI_COMMIT_TAG}-aarch64"
+
 
 docker-tags:
-  <<: *docker_template
-  rules:
-    - if: '$CI_COMMIT_TAG && $CI_COMMIT_TAG !~ /^v\d+\.\d+\.\d+$/'
-  script:
-    - docker build --pull -t "${CI_REGISTRY_IMAGE}:${CI_COMMIT_TAG}" .
-    - docker push "${CI_REGISTRY_IMAGE}:${CI_COMMIT_TAG}"
+  extends: .docker_tags
+  needs: ["cargo-build-amd64"]
 
-docker-branches:
-  <<: *docker_template
-  rules:
-    - if: '$CI_COMMIT_BRANCH'
-  script:
-    - docker build --pull -t "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}" .
-    - docker push "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
+docker-tags-armv7:
+  extends: .docker_tags
+  needs: ["cargo-build-armv7"]
+  variables:
+    DOCKER_TAG: "${CI_COMMIT_TAG}-armv7"
+
+docker-tags-aarch64:
+  extends: .docker_tags
+  needs: ["cargo-build-aarch64"]
+  variables:
+    DOCKER_TAG: "${CI_COMMIT_TAG}-aarch64"
+
+
+docker-branches-amd64:
+  extends: .docker_branches
+  needs: ["cargo-build-amd64"]
+
+docker-branches-armv7:
+  extends: .docker_branches
+  needs: ["cargo-build-armv7"]
+  variables:
+    DOCKER_TAG: "${CI_COMMIT_REF_SLUG}-armv7"
+
+docker-branches-aarch64:
+  extends: .docker_branches
+  needs: ["cargo-build-aarch64"]
+  variables:
+    DOCKER_TAG: "${CI_COMMIT_REF_SLUG}-aarch64"
