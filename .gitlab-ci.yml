@@ -1,9 +1,9 @@
 include:
   - project: 'famedly/templates/ci-cd'
-    ref: v0.1.0
+    ref: v0.1.1
     file: '/docker.yml'
   - project: 'famedly/templates/ci-cd'
-    ref: v0.1.0
+    ref: v0.1.1
     file: '/rust.yml'
 
 stages:
