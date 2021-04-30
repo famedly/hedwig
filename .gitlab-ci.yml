@@ -18,7 +18,7 @@ cargo-build-amd64:
   extends: .cargo_build
   script:
     - cargo build --release
-    - mv config.sample.toml ./target/release/config.toml
+    - mv config.sample.yaml ./target/release/config.yaml
 
 cargo-build-armv7:
   extends: .cargo_build
@@ -29,7 +29,7 @@ cargo-build-armv7:
     - rustup target add armv7-unknown-linux-gnueabihf
     - rustup show
     - cargo build --target armv7-unknown-linux-gnueabihf --release
-    - mv config.sample.toml ./target/release/config.toml
+    - mv config.sample.yaml ./target/release/config.yaml
   artifacts:
     paths:
       - target/armv7-unknown-linux-gnueabihf/release/
@@ -45,7 +45,7 @@ cargo-build-aarch64:
     - rustup target add aarch64-unknown-linux-gnu
     - rustup show
     - cargo build --target aarch64-unknown-linux-gnu --release
-    - mv config.sample.toml ./target/release/config.toml
+    - mv config.sample.yaml ./target/release/config.yaml
   artifacts:
     paths:
       - target/aarch64-unknown-linux-gnu/release/

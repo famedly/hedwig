@@ -25,7 +25,7 @@ use actix_web_prom::PrometheusMetrics;
 use fcm::{FcmResponse, Priority};
 use prometheus::{opts, IntCounterVec, Registry};
 use tracing::{debug, info};
-use tracing_subscriber::{EnvFilter, FmtSubscriber};
+use tracing_subscriber::FmtSubscriber;
 
 mod lib;
 
@@ -34,6 +34,7 @@ use lib::models;
 use lib::models::{ErrCode, MatrixError, PushGatewayResponse, PushNotification};
 use lib::{DeviceCounter, NotificationCounter, ProcessedNotification};
 use settings::Settings;
+use std::str::FromStr;
 
 mod settings;
 
@@ -46,7 +47,7 @@ async fn process_notification(
     fcm_client: web::Data<fcm::Client>,
 ) -> Result<HttpResponse, MatrixError> {
     let processed_notification =
-        ProcessedNotification::process(&push_notification, &config.app_id)?;
+        ProcessedNotification::process(&push_notification, &config.hedwig.app_id)?;
     let registration_ids = processed_notification.push_keys();
     if registration_ids.is_empty() {
         return Err(MatrixError {
@@ -65,13 +66,16 @@ async fn process_notification(
 
     // Get the MessageBuilder - either we need to send the notification to one or to multiple devices
     let mut builder = if registration_ids.len() == 1 {
-        fcm::MessageBuilder::new(&config.fcm_admin_key, registration_ids.first().unwrap())
+        fcm::MessageBuilder::new(
+            &config.hedwig.fcm_admin_key,
+            registration_ids.first().unwrap(),
+        )
     } else {
-        fcm::MessageBuilder::new_multi(&config.fcm_admin_key, &registration_ids)
+        fcm::MessageBuilder::new_multi(&config.hedwig.fcm_admin_key, &registration_ids)
     };
 
     // Set the data for fcm here
-    builder.collapse_key(&config.fcm_collapse_key);
+    builder.collapse_key(&config.hedwig.fcm_collapse_key);
     builder.priority(Priority::High);
     builder
         .data(&processed_notification.notification)
@@ -83,18 +87,19 @@ async fn process_notification(
     // Set additional keys for the notification message
 
     let title = config
+        .hedwig
         .fcm_notification_title
         .replace("<count>", &unread_count_string);
     if let lib::NotificationType::Notification = processed_notification.r#type() {
         let mut notification = fcm::NotificationBuilder::new();
         notification
             .title(&title)
-            .click_action(&config.fcm_notification_click_action)
-            .body(&config.fcm_notification_body)
+            .click_action(&config.hedwig.fcm_notification_click_action)
+            .body(&config.hedwig.fcm_notification_body)
             .badge(&unread_count_string)
-            .sound(&config.fcm_notification_sound)
-            .icon(&config.fcm_notification_icon)
-            .tag(&config.fcm_notification_tag);
+            .sound(&config.hedwig.fcm_notification_sound)
+            .icon(&config.hedwig.fcm_notification_icon)
+            .tag(&config.hedwig.fcm_notification_tag);
 
         builder.notification(notification.finalize());
     }
@@ -155,9 +160,12 @@ async fn process_notification(
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
+    let config = Settings::load().expect("Config file (config.yaml) is not present");
+
     let subscriber = FmtSubscriber::builder()
-        .with_env_filter(EnvFilter::from_default_env())
+        .with_max_level(tracing::Level::from_str(&config.log.level).unwrap())
         .finish();
+
     tracing::subscriber::set_global_default(subscriber).expect("Setting default subscriber failed");
 
     let notification_counter = NotificationCounter(
@@ -192,10 +200,9 @@ async fn main() -> std::io::Result<()> {
         .expect("Creating a prometheus registry");
     let prometheus = PrometheusMetrics::new_with_registry(registry, "api", Some("/metrics"), None)
         .expect("Creating prometheus metrics");
-    let config = Settings::load().expect("Config file (config.toml) is not present");
     info!(
         "Now listening on {}:{}",
-        config.server_bind_ip, config.server_port
+        config.server.bind_address, config.server.port
     );
     let app_config = web::Data::new(config.clone());
     let fcm_client = web::Data::new(fcm::Client::new());
@@ -225,7 +232,7 @@ async fn main() -> std::io::Result<()> {
                 web::post().to(process_notification),
             )
     })
-    .bind((config.server_bind_ip, config.server_port))?
+    .bind((config.server.bind_address, config.server.port))?
     .run()
     .await
 }
