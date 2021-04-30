@@ -81,16 +81,3 @@ docker run --rm --name hedwig \
 ```
 cargo build --release
 ```
-
-## Build Dependencies:
-- openSSL
-
-##### Fedora:
-```
-sudo dnf install openssl-devel
-```
-
-##### Debian/Ubuntu:
-```
-sudo apt install openssl-dev
-```
