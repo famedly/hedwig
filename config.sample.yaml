@@ -8,7 +8,6 @@ server:
 hedwig:
   app_id: "org.matrix.awesome_client"
   fcm_admin_key: "1234"
-  fcm_collapse_key: "org.matrix.default_notification"
   fcm_notification_click_action: "FLUTTER_NOTIFICATION_CLICK"
   fcm_notification_title: "<count> unread rooms"
   fcm_notification_body: "Open app to read the messages"
