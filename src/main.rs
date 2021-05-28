@@ -75,7 +75,6 @@ async fn process_notification(
     };
 
     // Set the data for fcm here
-    builder.collapse_key(&config.hedwig.fcm_collapse_key);
     builder.priority(Priority::High);
     builder
         .data(&processed_notification.notification)

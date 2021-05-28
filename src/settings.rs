@@ -23,7 +23,6 @@ use serde::Deserialize;
 pub struct Hedwig {
     pub app_id: String,
     pub fcm_admin_key: String,
-    pub fcm_collapse_key: String,
     pub fcm_notification_title: String,
     pub fcm_notification_body: String,
     pub fcm_notification_sound: String,
