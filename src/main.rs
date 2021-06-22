@@ -101,6 +101,10 @@ async fn process_notification(
             .tag(&config.hedwig.fcm_notification_tag);
 
         builder.notification(notification.finalize());
+    } else if processed_notification.is_clearing() && !processed_notification.is_data_message() {
+        let mut notification = fcm::NotificationBuilder::new();
+        notification.badge(&unread_count_string);
+        builder.notification(notification.finalize());
     }
 
     // Send the fcm message
