@@ -21,41 +21,41 @@ use serde::Deserialize;
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Hedwig {
-    pub app_id: String,
-    pub fcm_admin_key: String,
-    pub fcm_notification_title: String,
-    pub fcm_notification_body: String,
-    pub fcm_notification_sound: String,
-    pub fcm_notification_icon: String,
-    pub fcm_notification_tag: String,
-    pub fcm_notification_android_channel_id: String,
-    pub fcm_notification_click_action: String,
+	pub app_id: String,
+	pub fcm_admin_key: String,
+	pub fcm_notification_title: String,
+	pub fcm_notification_body: String,
+	pub fcm_notification_sound: String,
+	pub fcm_notification_icon: String,
+	pub fcm_notification_tag: String,
+	pub fcm_notification_android_channel_id: String,
+	pub fcm_notification_click_action: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Server {
-    pub port: u16,
-    pub bind_address: String,
+	pub port: u16,
+	pub bind_address: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Log {
-    pub level: String,
+	pub level: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
-    pub log: Log,
-    pub server: Server,
-    pub hedwig: Hedwig,
+	pub log: Log,
+	pub server: Server,
+	pub hedwig: Hedwig,
 }
 
 impl Settings {
-    pub fn load() -> Result<Self, ConfigError> {
-        let mut conf = Config::new();
-        conf.merge(File::with_name("config.yaml"))?;
-        conf.merge(Environment::with_prefix("push_gw").separator("_"))?;
-        conf.set_default("log.level", "INFO")?;
-        conf.try_into()
-    }
+	pub fn load() -> Result<Self, ConfigError> {
+		let mut conf = Config::new();
+		conf.merge(File::with_name("config.yaml"))?;
+		conf.merge(Environment::with_prefix("push_gw").separator("_"))?;
+		conf.set_default("log.level", "INFO")?;
+		conf.try_into()
+	}
 }

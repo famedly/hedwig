@@ -23,99 +23,99 @@ use tracing::error;
 
 #[derive(Deserialize, Debug)]
 pub struct PushNotification {
-    pub notification: Notification,
+	pub notification: Notification,
 }
 
 impl PushNotification {
-    pub fn first_device(&self) -> Result<&Device, MatrixError> {
-        self.notification.devices.first().ok_or(MatrixError {
-            error: String::from("No devices were provided"),
-            errcode: ErrCode::MBadJson,
-        })
-    }
+	pub fn first_device(&self) -> Result<&Device, MatrixError> {
+		self.notification.devices.first().ok_or(MatrixError {
+			error: String::from("No devices were provided"),
+			errcode: ErrCode::MBadJson,
+		})
+	}
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum Priority {
-    Low,
-    High,
+	Low,
+	High,
 }
 
 #[derive(Serialize, Debug)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ErrCode {
-    MBadJson,
-    MMissingParam,
-    MUnknown,
+	MBadJson,
+	MMissingParam,
+	MUnknown,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Counts {
-    pub unread: Option<u16>,
-    pub missed_calls: Option<u16>,
+	pub unread: Option<u16>,
+	pub missed_calls: Option<u16>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Device {
-    pub app_id: String,
-    pub pushkey: String,
-    pub pushkey_ts: Option<u32>,
-    pub data: Option<PusherData>,
-    pub tweaks: Option<Tweaks>,
+	pub app_id: String,
+	pub pushkey: String,
+	pub pushkey_ts: Option<u32>,
+	pub data: Option<PusherData>,
+	pub tweaks: Option<Tweaks>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct PusherData {
-    pub url: Option<String>,
-    pub format: Option<String>,
+	pub url: Option<String>,
+	pub format: Option<String>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Tweaks {
-    pub sound: Option<String>,
-    pub highlight: Option<bool>,
+	pub sound: Option<String>,
+	pub highlight: Option<bool>,
 }
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Notification {
-    pub event_id: Option<String>,
-    pub room_id: Option<String>,
-    pub r#type: Option<String>,
-    pub sender: Option<String>,
-    pub sender_display_name: Option<String>,
-    pub room_name: Option<String>,
-    pub room_alias: Option<String>,
-    pub prio: Option<Priority>,
-    pub counts: Option<Counts>,
-    pub content: Option<serde_json::Value>,
-    pub devices: Vec<Device>,
+	pub event_id: Option<String>,
+	pub room_id: Option<String>,
+	pub r#type: Option<String>,
+	pub sender: Option<String>,
+	pub sender_display_name: Option<String>,
+	pub room_name: Option<String>,
+	pub room_alias: Option<String>,
+	pub prio: Option<Priority>,
+	pub counts: Option<Counts>,
+	pub content: Option<serde_json::Value>,
+	pub devices: Vec<Device>,
 }
 
 #[derive(Serialize, Debug)]
 pub struct MatrixError {
-    pub error: String,
-    pub errcode: ErrCode,
+	pub error: String,
+	pub errcode: ErrCode,
 }
 
 impl Display for MatrixError {
-    fn fmt(&self, f: &mut Formatter) -> FmtResult {
-        write!(f, "{}", serde_json::to_string_pretty(self).unwrap())
-    }
+	fn fmt(&self, f: &mut Formatter) -> FmtResult {
+		write!(f, "{}", serde_json::to_string_pretty(self).unwrap())
+	}
 }
 
 impl ResponseError for MatrixError {
-    fn error_response(&self) -> web::HttpResponse {
-        error!("{}", &self.error);
-        let status_code = match self.errcode {
-            ErrCode::MUnknown => http::StatusCode::BAD_GATEWAY,
-            _ => http::StatusCode::BAD_REQUEST,
-        };
-        web::HttpResponse::build(status_code).json(self)
-    }
+	fn error_response(&self) -> web::HttpResponse {
+		error!("{}", &self.error);
+		let status_code = match self.errcode {
+			ErrCode::MUnknown => http::StatusCode::BAD_GATEWAY,
+			_ => http::StatusCode::BAD_REQUEST,
+		};
+		web::HttpResponse::build(status_code).json(self)
+	}
 }
 
 #[derive(Serialize)]
 pub struct PushGatewayResponse {
-    pub rejected: Vec<String>,
+	pub rejected: Vec<String>,
 }
