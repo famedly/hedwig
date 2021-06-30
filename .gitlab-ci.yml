@@ -12,6 +12,8 @@ stages:
 
 cargo-check:
   extends: .cargo_check
+  script: 
+    - cargo install cargo-tarpaulin -f
 
 cargo-build-amd64:
   extends: .cargo_build
