@@ -1,3 +1,5 @@
+//! Famedly matrix push gateway
+
 /*
  *   Matrix Hedwig
  *   Copyright (C) 2019, 2020, 2021 Famedly GmbH
@@ -16,197 +18,82 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::convert::TryInto;
+#![deny(
+	missing_docs,
+	trivial_casts,
+	trivial_numeric_casts,
+	unused_extern_crates,
+	unused_import_braces,
+	unused_qualifications
+)]
+#![warn(missing_debug_implementations, dead_code, clippy::unwrap_used, clippy::expect_used)]
 
-use actix_web::error::JsonPayloadError;
-use actix_web::middleware::Logger;
-use actix_web::{web, App, HttpResponse, HttpServer};
-use actix_web_prom::PrometheusMetrics;
-use fcm::{FcmResponse, Priority};
-use prometheus::{opts, IntCounterVec, Registry};
-use tracing::{debug, info};
-use tracing_subscriber::FmtSubscriber;
-
-mod lib;
-
-use crate::lib::LastSuccessfulCollector;
-use lib::models;
-use lib::models::{ErrCode, MatrixError, PushGatewayResponse, PushNotification};
-use lib::{DeviceCounter, NotificationCounter, ProcessedNotification};
-use settings::Settings;
 use std::str::FromStr;
 
-mod settings;
-
-async fn process_notification(
-	push_notification: web::Json<PushNotification>,
-	config: web::Data<Settings>,
-	notification_counter: web::Data<NotificationCounter>,
-	last_notification_gauge: web::Data<LastSuccessfulCollector>,
-	device_counter: web::Data<DeviceCounter>,
-	fcm_client: web::Data<fcm::Client>,
-) -> Result<HttpResponse, MatrixError> {
-	let processed_notification =
-		ProcessedNotification::process(&push_notification, &config.hedwig.app_id)?;
-	let registration_ids = processed_notification.push_keys();
-	if registration_ids.is_empty() {
-		return Err(MatrixError {
-			error: String::from("No registration IDs with the matching app ID provided"),
-			errcode: ErrCode::MBadJson,
-		});
-	}
-	device_counter
-		.with_label_values(&[])
-		.inc_by(processed_notification.device_count().try_into().unwrap());
-
-	// String representation of the unread counter with "0" as default
-	let unread_count_string = processed_notification.unread_count().to_string();
-
-	debug!("Received push notification for registration-ID(s) {:?}, message type = {} and unread count {}", &registration_ids, &processed_notification.r#type(), &unread_count_string);
-
-	// Get the MessageBuilder - either we need to send the notification to one or to multiple devices
-	let mut builder = if registration_ids.len() == 1 {
-		fcm::MessageBuilder::new(
-			&config.hedwig.fcm_admin_key,
-			registration_ids.first().unwrap(),
-		)
-	} else {
-		fcm::MessageBuilder::new_multi(&config.hedwig.fcm_admin_key, &registration_ids)
-	};
-
-	// Set the data for fcm here
-	builder.priority(Priority::High);
-	builder
-		.data(&processed_notification.notification)
-		.map_err(|e| MatrixError {
-			errcode: ErrCode::MBadJson,
-			error: e.to_string(),
-		})?;
-
-	// Set additional keys for the notification message
-
-	let title = config
-		.hedwig
-		.fcm_notification_title
-		.replace("<count>", &unread_count_string);
-	if let lib::NotificationType::Notification = processed_notification.r#type() {
-		let mut notification = fcm::NotificationBuilder::new();
-		notification
-			.title(&title)
-			.click_action(&config.hedwig.fcm_notification_click_action)
-			.body(&config.hedwig.fcm_notification_body)
-			.badge(&unread_count_string)
-			.sound(&config.hedwig.fcm_notification_sound)
-			.icon(&config.hedwig.fcm_notification_icon)
-			.tag(&config.hedwig.fcm_notification_tag);
-
-		builder.notification(notification.finalize());
-	} else if processed_notification.is_clearing() && !processed_notification.is_data_message() {
-		let mut notification = fcm::NotificationBuilder::new();
-		notification.badge(&unread_count_string);
-		builder.notification(notification.finalize());
-	}
-
-	// Send the fcm message
-	if let Ok(FcmResponse {
-		results: Some(results),
-		..
-	}) = fcm_client.send(builder.finalize()).await
-	{
-		let rejected: Vec<String> = results
-			.iter()
-			.enumerate()
-			.filter_map(|(idx, result)| {
-				result
-					.error
-					.and_then(|_| registration_ids.get(idx).cloned().cloned())
-			})
-			.collect();
-
-		let succeeded: Vec<String> = results
-			.iter()
-			.enumerate()
-			.filter_map(|(idx, result)| {
-				if result.error.is_none() {
-					registration_ids.get(idx).cloned().cloned()
-				} else {
-					None
-				}
-			})
-			.collect();
-
-		if !succeeded.is_empty() {
-			last_notification_gauge.update();
-		}
-
-		debug!("Rejected: {:?}", &rejected);
-		debug!("Succeeded: {:?}", &succeeded);
-
-		notification_counter
-			.with_label_values(&[&processed_notification.r#type().to_string(), "rejected"])
-			.inc_by(rejected.len().try_into().unwrap());
-		notification_counter
-			.with_label_values(&[&processed_notification.r#type().to_string(), "succeeded"])
-			.inc_by(succeeded.len().try_into().unwrap());
-
-		Ok(HttpResponse::Ok().json(&PushGatewayResponse { rejected }))
-	} else {
-		notification_counter
-			.with_label_values(&[&processed_notification.r#type().to_string(), "errored"])
-			.inc_by(registration_ids.len().try_into().unwrap());
-		Err(MatrixError {
-			error: String::from("Invalid response from upstream push service"),
-			errcode: ErrCode::MUnknown,
-		})
-	}
-}
+use actix_web::{middleware::Logger, web, App, HttpResponse, HttpServer};
+use actix_web_prom::PrometheusMetrics;
+use color_eyre::{
+	eyre::{eyre, WrapErr},
+	Report,
+};
+use matrix_hedwig::{
+	handlers::{json_error_handler, process_notification},
+	metrics::{DeviceCounter, LastSuccessfulCollector, NotificationCounter},
+	settings,
+};
+use prometheus::{opts, IntCounterVec, Registry};
+use settings::Settings;
+use tracing::info;
+use tracing_subscriber::FmtSubscriber;
 
 #[actix_web::main]
-async fn main() -> std::io::Result<()> {
-	let config = Settings::load().expect("Config file (config.yaml) is not present");
+async fn main() -> Result<(), Report> {
+	let config = Settings::load().wrap_err("Couldn't load the config")?;
 
 	let subscriber = FmtSubscriber::builder()
-		.with_max_level(tracing::Level::from_str(&config.log.level).unwrap())
+		.with_max_level(
+			tracing::Level::from_str(&config.log.level).wrap_err("Initializing logging failed")?,
+		)
 		.finish();
 
-	tracing::subscriber::set_global_default(subscriber).expect("Setting default subscriber failed");
+	tracing::subscriber::set_global_default(subscriber)
+		.wrap_err("Setting up default subscriber")?;
 
 	let notification_counter = NotificationCounter(
 		IntCounterVec::new(
 			opts!("notifications_total", "Notification statistics").namespace("hedwig"),
 			&["type", "status"],
 		)
-		.unwrap(),
+		.wrap_err("Setting up the Prometheus notification counter")?,
 	);
 	let device_counter = DeviceCounter(
 		IntCounterVec::new(
 			opts!("devices_total", "Notification statistics").namespace("hedwig"),
 			&[],
 		)
-		.unwrap(),
+		.wrap_err("Setting up the Prometheus device counter")?,
 	);
 
-	let last_successful_gauge = lib::LastSuccessfulCollector::new(
+	let last_successful_gauge = LastSuccessfulCollector::new(
 		"last_notification_seconds",
 		"Seconds since the last successful notification was sent",
-	);
+	)
+	.wrap_err("Creating a last succesful gauge")?;
 
 	let registry = Registry::new();
 	registry
 		.register(Box::new(notification_counter.0.clone()))
-		.expect("Creating a prometheus registry");
+		.wrap_err("Registering a notification counter")?;
 	registry
 		.register(Box::new(device_counter.0.clone()))
-		.expect("Creating a prometheus registry");
+		.wrap_err("Registering a device counter")?;
 	registry
 		.register(Box::new(last_successful_gauge.clone()))
-		.expect("Creating a prometheus registry");
+		.wrap_err("Registering a last succesful gauge")?;
 	let prometheus = PrometheusMetrics::new_with_registry(registry, "api", Some("/metrics"), None)
-		.expect("Creating prometheus metrics");
-	info!(
-		"Now listening on {}:{}",
-		config.server.bind_address, config.server.port
-	);
+		.map_err(|e| eyre!("Initializing prometheus: {}", e))?;
+
+	info!("Now listening on {}:{}", config.server.bind_address, config.server.port);
 	let app_config = web::Data::new(config.clone());
 	let fcm_client = web::Data::new(fcm::Client::new());
 
@@ -230,29 +117,11 @@ async fn main() -> std::io::Result<()> {
 				web::resource("/version")
 					.to(|| actix_web::HttpResponse::Ok().body(env!("VERGEN_GIT_SEMVER"))),
 			)
-			.route(
-				"/_matrix/push/v1/notify",
-				web::post().to(process_notification),
-			)
+			.route("/_matrix/push/v1/notify", web::post().to(process_notification))
 	})
 	.bind((config.server.bind_address, config.server.port))?
 	.run()
 	.await
-}
-
-fn json_error_handler(err: JsonPayloadError, _: &actix_web::HttpRequest) -> actix_web::Error {
-	if let JsonPayloadError::Deserialize(deserialize_err) = &err {
-		if deserialize_err.classify() == serde_json::error::Category::Data {
-			return MatrixError {
-				error: deserialize_err.to_string(),
-				errcode: ErrCode::MMissingParam,
-			}
-			.into();
-		}
-	}
-	MatrixError {
-		error: err.to_string(),
-		errcode: ErrCode::MBadJson,
-	}
-	.into()
+	.wrap_err("Initializing HTTP server")?;
+	Ok(())
 }
