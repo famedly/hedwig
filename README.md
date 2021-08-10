@@ -1,4 +1,14 @@
 # Matrix Hedwig
+
+[![pipeline status][badge-pipeline-img]][badge-pipeline-url]
+[![coverage report][badge-coverage-img]][badge-coverage-url]
+
+[badge-coverage-img]: https://gitlab.com/famedly/company/backend/services/hedwig/badges/main/coverage.svg
+[badge-coverage-url]: https://gitlab.com/famedly/company/backend/services/hedwig/-/commits/main
+[badge-pipeline-img]: https://gitlab.com/famedly/company/backend/services/hedwig/badges/main/pipeline.svg
+[badge-pipeline-url]: https://gitlab.com/famedly/company/backend/services/hedwig/-/commits/main
+
+
 This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) application. It implements the [Matrix Push Notification API r0.1.1](https://matrix.org/docs/spec/push_gateway/r0.1.1) and supports [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging/) only.
 
 ## Features:
