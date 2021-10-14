@@ -1,9 +1,11 @@
 include:
-  - project: "famedly/company/devops/templates/ci-cd"
-    ref: main
-    file:
-      - "/rust.yml"
-      - "/docker.yml"
+  - project: 'famedly/company/devops/templates/ci-cd'
+    ref: 'docker-v1'
+    file: '/docker.yml'
+  - project: 'famedly/company/devops/templates/ci-cd'
+    ref: 'rust-v1'
+    file: '/rust.yml'
+
 
 stages:
   - test
@@ -12,15 +14,11 @@ stages:
 
 cargo-check:
   extends: .cargo_check
-  before_script:
-    - cargo install cargo-tarpaulin -f
-  script:
-    - cargo tarpaulin -v
 
 cargo-build-amd64:
   extends: .cargo_build
   script:
-    - cargo build --release
+    - !reference [.cargo_build, script]
     - mv config.sample.yaml ./target/release/config.yaml
 
 cargo-build-armv7:
@@ -40,9 +38,11 @@ cargo-build-armv7:
 cargo-build-aarch64:
   extends: .cargo_build
   variables:
-    TARGET_CC: "/usr/bin/aarch64-linux-gnu-gcc-8"
-    TARGET_AR: "/usr/bin/aarch64-linux-gnu-gcc-ar-8"
-    RUST_ADDITIONAL_PACKAGES: "gcc-8-aarch64-linux-gnu libc6-dev-arm64-cross"
+    TARGET_CC: "/usr/bin/aarch64-linux-gnu-gcc-10"
+    TARGET_LD: "/usr/bin/aarch64-linux-gnu-gcc-10"
+    TARGET_AR: "/usr/bin/aarch64-linux-gnu-gcc-ar-10"
+    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "aarch64-linux-gnu-gcc-10"
+    RUST_ADDITIONAL_PACKAGES: "gcc-10-aarch64-linux-gnu libc6-dev-arm64-cross"
   script:
     - mkdir .cargo && mv cargo/config .cargo/config
     - rustup target add aarch64-unknown-linux-gnu

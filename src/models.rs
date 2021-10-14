@@ -1,3 +1,5 @@
+//! JSON model structures
+
 /*
  *   Matrix Hedwig
  *   Copyright (C) 2019, 2020, 2021 Famedly GmbH
@@ -16,17 +18,19 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use actix_web::{http, web, ResponseError};
 use serde::{Deserialize, Serialize};
-use std::fmt::{Display, Formatter, Result as FmtResult};
-use tracing::error;
 
+use crate::error::{ErrCode, MatrixError};
+
+/// The notification itself
 #[derive(Deserialize, Debug)]
 pub struct PushNotification {
+	/// Notification
 	pub notification: Notification,
 }
 
 impl PushNotification {
+	/// Extract the first device from the notification list
 	pub fn first_device(&self) -> Result<&Device, MatrixError> {
 		self.notification.devices.first().ok_or(MatrixError {
 			error: String::from("No devices were provided"),
@@ -35,87 +39,91 @@ impl PushNotification {
 	}
 }
 
+/// The notification priority
 #[derive(Deserialize, Serialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum Priority {
+	/// Low priority
 	Low,
+	/// High priority
 	High,
 }
 
-#[derive(Serialize, Debug)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum ErrCode {
-	MBadJson,
-	MMissingParam,
-	MUnknown,
-}
-
+/// Notification counts
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Counts {
+	/// Unread notifications
 	pub unread: Option<u16>,
+	/// Missed calls
 	pub missed_calls: Option<u16>,
 }
 
+/// The device notification is sent for
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Device {
+	/// ID of the application
 	pub app_id: String,
+	/// Push key
 	pub pushkey: String,
+	/// Timestamp of the last Push key update
 	pub pushkey_ts: Option<u32>,
+	/// Pusher specific data
 	pub data: Option<PusherData>,
+	/// A dictionary of customisations made to the way this notification is to
+	/// be presented.
 	pub tweaks: Option<Tweaks>,
 }
 
+/// Pusher specific data
 #[derive(Deserialize, Serialize, Debug)]
 pub struct PusherData {
+	/// Url to send notifications to
 	pub url: Option<String>,
+	/// The format to use when sending notifications to the Push Gateway.
 	pub format: Option<String>,
 }
 
+/// A dictionary of customisations made to the way this notification is to be
+/// presented.
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Tweaks {
+	/// Should sound be played
 	pub sound: Option<String>,
+	/// Should the message be highlighted
 	pub highlight: Option<bool>,
 }
 
+/// The notification body
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Notification {
+	/// The Matrix event ID
 	pub event_id: Option<String>,
+	/// The Matrix room ID
 	pub room_id: Option<String>,
+	/// The event type
 	pub r#type: Option<String>,
+	/// The sender of the event
 	pub sender: Option<String>,
+	/// The sender display name
 	pub sender_display_name: Option<String>,
+	/// The name of the room in which the event occurred.
 	pub room_name: Option<String>,
+	/// An alias to display for the room in which the event occurred.
 	pub room_alias: Option<String>,
+	/// The priority of the notification. If omitted, high is assumed.
 	pub prio: Option<Priority>,
+	/// This is a dictionary of the current number of unacknowledged
+	/// communications for the recipient user.
 	pub counts: Option<Counts>,
+	/// The content field from the event, if present.
 	pub content: Option<serde_json::Value>,
+	/// This is an array of devices that the notification should be sent to.
 	pub devices: Vec<Device>,
 }
 
+/// Response from the push gateway
 #[derive(Serialize, Debug)]
-pub struct MatrixError {
-	pub error: String,
-	pub errcode: ErrCode,
-}
-
-impl Display for MatrixError {
-	fn fmt(&self, f: &mut Formatter) -> FmtResult {
-		write!(f, "{}", serde_json::to_string_pretty(self).unwrap())
-	}
-}
-
-impl ResponseError for MatrixError {
-	fn error_response(&self) -> web::HttpResponse {
-		error!("{}", &self.error);
-		let status_code = match self.errcode {
-			ErrCode::MUnknown => http::StatusCode::BAD_GATEWAY,
-			_ => http::StatusCode::BAD_REQUEST,
-		};
-		web::HttpResponse::build(status_code).json(self)
-	}
-}
-
-#[derive(Serialize)]
 pub struct PushGatewayResponse {
+	/// The list of rejected notification push keys
 	pub rejected: Vec<String>,
 }
