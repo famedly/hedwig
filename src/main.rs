@@ -46,6 +46,11 @@ use settings::Settings;
 use tracing::info;
 use tracing_subscriber::FmtSubscriber;
 
+const VERSION: &str = match option_env!("VERGEN_GIT_SEMVER") {
+	Some(version) => version,
+	None => env!("CARGO_PKG_VERSION"),
+};
+
 #[actix_web::main]
 async fn main() -> Result<(), Report> {
 	let config = Settings::load().wrap_err("Couldn't load the config")?;
@@ -113,10 +118,7 @@ async fn main() -> Result<(), Report> {
 					.body(&include_bytes!("../static/favicon.ico")[..])
 			}))
 			.service(web::resource("/health").to(|| actix_web::HttpResponse::Ok().finish()))
-			.service(
-				web::resource("/version")
-					.to(|| actix_web::HttpResponse::Ok().body(env!("VERGEN_GIT_SEMVER"))),
-			)
+			.service(web::resource("/version").to(|| actix_web::HttpResponse::Ok().body(VERSION)))
 			.route("/_matrix/push/v1/notify", web::post().to(process_notification))
 	})
 	.bind((config.server.bind_address, config.server.port))?

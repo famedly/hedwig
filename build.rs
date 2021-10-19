@@ -3,5 +3,7 @@ extern crate vergen;
 use vergen::{vergen, Config};
 
 fn main() {
-	vergen(Config::default()).expect("Unable to generate cargo keys!");
+	if let Err(e) = vergen(Config::default()) {
+		println!("cargo:warning=Vergen failed to generate additional build metadata: {}", e);
+	}
 }
