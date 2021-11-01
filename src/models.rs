@@ -81,6 +81,8 @@ pub struct PusherData {
 	pub url: Option<String>,
 	/// The format to use when sending notifications to the Push Gateway.
 	pub format: Option<String>,
+	/// The algorithm used to potentially encrypt the push payload.
+	pub algorithm: Option<String>,
 }
 
 /// A dictionary of customisations made to the way this notification is to be
@@ -119,6 +121,12 @@ pub struct Notification {
 	pub content: Option<serde_json::Value>,
 	/// This is an array of devices that the notification should be sent to.
 	pub devices: Vec<Device>,
+	/// The ciphertext of an encrypted push payload
+	pub ciphertext: Option<String>,
+	/// The ephemeral key of an encrypted push payload
+	pub ephemeral: Option<String>,
+	/// The mac of an encrypted push payload
+	pub mac: Option<String>,
 }
 
 /// Response from the push gateway
