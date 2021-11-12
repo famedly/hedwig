@@ -91,3 +91,9 @@ docker run --rm --name hedwig \
 ```
 cargo build --release
 ```
+
+# Pre-commit usage
+
+1. If not installed, install with your package manager, or `pip install --user pre-commit`
+2. Run `pre-commit autoupdate` to update the pre-commit config to use the newest template
+3. Run `pre-commit install` to install the pre-commit hooks to your local environment
