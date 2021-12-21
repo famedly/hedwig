@@ -19,7 +19,11 @@
  */
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use actix_web::{http::StatusCode, HttpResponse, ResponseError};
+use axum::{
+	http::StatusCode,
+	response::{IntoResponse, Response},
+	Json,
+};
 use serde::Serialize;
 use tracing::error;
 
@@ -57,13 +61,13 @@ impl Display for MatrixError {
 	}
 }
 
-impl ResponseError for MatrixError {
-	fn error_response(&self) -> HttpResponse {
+impl IntoResponse for MatrixError {
+	fn into_response(self) -> Response {
 		error!("{}", &self.error);
 		let status_code = match self.errcode {
 			ErrCode::MUnknown => StatusCode::BAD_GATEWAY,
 			_ => StatusCode::BAD_REQUEST,
 		};
-		HttpResponse::build(status_code).json(self)
+		(status_code, Json(self)).into_response()
 	}
 }

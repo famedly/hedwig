@@ -18,136 +18,132 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::convert::{TryFrom, TryInto};
+use std::{collections::HashMap, convert::TryFrom, sync::Arc};
 
-use actix_web::{error::JsonPayloadError, web, HttpRequest, HttpResponse};
-use fcm::{FcmResponse, Priority};
+use axum::{
+	async_trait,
+	extract::{rejection::JsonRejection, Extension, FromRequest, RequestParts},
+	http::StatusCode,
+	BoxError,
+};
+use serde::de::DeserializeOwned;
 use tracing::debug;
 
 use crate::{
+	apns_notification::apns_notification,
 	error::{ErrCode, MatrixError},
+	fcm_notification::fcm_notification,
 	metrics::{DeviceCounter, LastSuccessfulCollector, NotificationCounter},
 	models::{PushGatewayResponse, PushNotification},
-	settings::Settings,
-	NotificationType, ProcessedNotification,
+	settings::{Pusher, Settings},
 };
 
-/// Handle json parsing error
-pub fn json_error_handler(err: JsonPayloadError, _: &HttpRequest) -> actix_web::Error {
-	if let JsonPayloadError::Deserialize(deserialize_err) = &err {
-		if deserialize_err.classify() == serde_json::error::Category::Data {
-			return MatrixError {
-				error: deserialize_err.to_string(),
-				errcode: ErrCode::MMissingParam,
+/// Json deserializer with matrix errors
+#[derive(Debug)]
+pub struct Json<T>(T);
+
+#[async_trait]
+impl<B, T> FromRequest<B> for Json<T>
+where
+	// these trait bounds are copied from `impl FromRequest for
+	// axum::Json`
+	T: DeserializeOwned,
+	B: axum::body::HttpBody + Send,
+	B::Data: Send,
+	B::Error: Into<BoxError>,
+{
+	type Rejection = (StatusCode, MatrixError);
+
+	async fn from_request(req: &mut RequestParts<B>) -> Result<Self, Self::Rejection> {
+		match axum::Json::<T>::from_request(req).await {
+			Ok(value) => Ok(Self(value.0)),
+			Err(rejection) => {
+				// convert the error from `axum::Json` into whatever we want
+				match rejection {
+					JsonRejection::InvalidJsonBody(err) => Err((
+						StatusCode::BAD_REQUEST,
+						MatrixError {
+							error: format!("Invalid JSON request: {}", err),
+							errcode: ErrCode::MBadJson,
+						},
+					)),
+					JsonRejection::MissingJsonContentType(err) => Err((
+						StatusCode::BAD_REQUEST,
+						MatrixError { error: err.to_string(), errcode: ErrCode::MBadJson },
+					)),
+
+					JsonRejection::HeadersAlreadyExtracted(err) => Err((
+						StatusCode::INTERNAL_SERVER_ERROR,
+						MatrixError { error: err.to_string(), errcode: ErrCode::MUnknown },
+					)),
+					err => Err((
+						StatusCode::INTERNAL_SERVER_ERROR,
+						MatrixError {
+							error: format!("Unknown internal error: {}", err),
+							errcode: ErrCode::MUnknown,
+						},
+					)),
+				}
 			}
-			.into();
 		}
 	}
-	MatrixError { error: err.to_string(), errcode: ErrCode::MBadJson }.into()
 }
 
 /// process the notification
 pub async fn process_notification(
-	push_notification: web::Json<PushNotification>,
-	config: web::Data<Settings>,
-	notification_counter: web::Data<NotificationCounter>,
-	last_notification_gauge: web::Data<LastSuccessfulCollector>,
-	device_counter: web::Data<DeviceCounter>,
-	fcm_client: web::Data<fcm::Client>,
-) -> Result<HttpResponse, MatrixError> {
-	let processed_notification =
-		ProcessedNotification::process(&push_notification, &config.hedwig.app_id)?;
-	let registration_ids = processed_notification.push_keys();
-	if registration_ids.is_empty() {
-		return Err(MatrixError {
-			error: String::from("No registration IDs that match the app ID were provided"),
-			errcode: ErrCode::MBadJson,
-		});
-	}
-	device_counter.with_label_values(&[]).inc_by(
-		u64::try_from(processed_notification.device_count()).map_err(|_| MatrixError::unknown())?,
-	);
+	Json(push_notification): Json<PushNotification>,
+	config: Extension<Settings>,
+	notification_counter: Extension<NotificationCounter>,
+	last_notification_gauge: Extension<LastSuccessfulCollector>,
+	device_counter: Extension<DeviceCounter>,
+	fcm_client: Extension<Arc<fcm::Client>>,
+	apns_clients: Extension<Arc<HashMap<String, a2::Client>>>,
+) -> Result<axum::Json<PushGatewayResponse>, MatrixError> {
+	let notification = &push_notification.notification;
 
-	// String representation of the unread counter with "0" as default
-	let unread_count_string = processed_notification.unread_count().to_string();
+	device_counter
+		.with_label_values(&[])
+		.inc_by(u64::try_from(notification.device_count()).map_err(|_| MatrixError::unknown())?);
 
-	debug!(
-		"Received push notification for registration-ID(s) {:?}, message type = {} and unread count {}",
-		&registration_ids,
-		&processed_notification.r#type(),
-		&unread_count_string
-	);
+	let mut rejected: Vec<String> = Vec::new();
+	let mut succeeded: Vec<String> = Vec::new();
+	for device in notification.devices.iter() {
+		let push_key = device.pushkey.to_owned();
+		let app_id = device.app_id.to_owned();
 
-	// Get the MessageBuilder - either we need to send the notification to one or to
-	// multiple devices
-	let mut builder = if registration_ids.len() == 1 {
-		fcm::MessageBuilder::new(
-			&config.hedwig.fcm_admin_key,
-			registration_ids.first().ok_or_else(MatrixError::unknown)?,
-		)
-	} else {
-		fcm::MessageBuilder::new_multi(&config.hedwig.fcm_admin_key, &registration_ids)
-	};
-
-	// Set the data for fcm here
-	builder.priority(Priority::High);
-	builder
-		.data(&processed_notification.notification)
-		.map_err(|e| MatrixError { errcode: ErrCode::MBadJson, error: e.to_string() })?;
-
-	// Set additional keys for the notification message
-
-	let title = config.hedwig.fcm_notification_title.replace("<count>", &unread_count_string);
-	if let NotificationType::Notification = processed_notification.r#type() {
-		let mut notification = fcm::NotificationBuilder::new();
-		notification
-			.title(&title)
-			.click_action(&config.hedwig.fcm_notification_click_action)
-			.body(&config.hedwig.fcm_notification_body)
-			.badge(&unread_count_string)
-			.sound(&config.hedwig.fcm_notification_sound)
-			.icon(&config.hedwig.fcm_notification_icon)
-			.tag(&config.hedwig.fcm_notification_tag);
-
-		builder.notification(notification.finalize());
-	} else if processed_notification.is_clearing() && !processed_notification.is_data_message() {
-		let mut notification = fcm::NotificationBuilder::new();
-		notification.badge(&unread_count_string);
-		builder.notification(notification.finalize());
-	}
-
-	// Send the fcm message
-	let results = match fcm_client.send(builder.finalize()).await {
-		Ok(FcmResponse { results: Some(results), .. }) => results,
-		_ => {
-			notification_counter
-				.with_label_values(&[&processed_notification.r#type().to_string(), "errored"])
-				.inc_by(registration_ids.len().try_into().map_err(|_| MatrixError::unknown())?);
-			return Err(MatrixError {
-				error: String::from("Invalid response from upstream push service"),
-				errcode: ErrCode::MUnknown,
-			});
-		}
-	};
-	let rejected: Vec<String> = results
-		.iter()
-		.enumerate()
-		.filter_map(|(idx, result)| {
-			result.error.and_then(|_| registration_ids.get(idx).cloned().cloned())
-		})
-		.collect();
-
-	let succeeded: Vec<String> = results
-		.iter()
-		.enumerate()
-		.filter_map(|(idx, result)| {
-			if result.error.is_none() {
-				registration_ids.get(idx).cloned().cloned()
-			} else {
-				None
+		let result = match config.pushers.get(&app_id) {
+			Some(Pusher::Fcm { .. } | Pusher::FcmData { .. }) => {
+				fcm_notification(notification, device, &config, &notification_counter, &fcm_client)
+					.await
 			}
-		})
-		.collect();
+			Some(Pusher::Apns { .. }) => {
+				apns_notification(
+					notification,
+					device,
+					&config,
+					&notification_counter,
+					&apns_clients,
+				)
+				.await
+			}
+			None => Err(MatrixError {
+				error: String::from("Invalid app id"),
+				errcode: ErrCode::MUnknown,
+			}),
+		};
+
+		if let Err(err) = result {
+			debug!(
+				"Rejecting app id {} push key {} with reason {}",
+				&app_id, &push_key, &err.error
+			);
+			rejected.push(push_key);
+			notification_counter.with_label_values(&[&app_id, "rejected"]).inc_by(1);
+		} else {
+			succeeded.push(push_key);
+			notification_counter.with_label_values(&[&app_id, "succeeded"]).inc_by(1);
+		}
+	}
 
 	if !succeeded.is_empty() {
 		last_notification_gauge.update();
@@ -156,12 +152,5 @@ pub async fn process_notification(
 	debug!("Rejected: {:?}", &rejected);
 	debug!("Succeeded: {:?}", &succeeded);
 
-	notification_counter
-		.with_label_values(&[&processed_notification.r#type().to_string(), "rejected"])
-		.inc_by(rejected.len().try_into().map_err(|_| MatrixError::unknown())?);
-	notification_counter
-		.with_label_values(&[&processed_notification.r#type().to_string(), "succeeded"])
-		.inc_by(succeeded.len().try_into().map_err(|_| MatrixError::unknown())?);
-
-	Ok(HttpResponse::Ok().json(&PushGatewayResponse { rejected }))
+	Ok(axum::Json(PushGatewayResponse { rejected }))
 }

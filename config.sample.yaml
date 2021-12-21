@@ -6,12 +6,15 @@ server:
   port: 7022
 
 hedwig:
-  app_id: "org.matrix.awesome_client"
-  fcm_admin_key: "1234"
-  fcm_notification_click_action: "FLUTTER_NOTIFICATION_CLICK"
-  fcm_notification_title: "<count> unread rooms"
-  fcm_notification_body: "Open app to read the messages"
-  fcm_notification_sound: "default"
-  fcm_notification_icon: "notifications_icon"
-  fcm_notification_tag: "org.matrix.default_notification"
-  fcm_notification_android_channel_id: "org.matrix.app.message"
+  notification_click_action: "FLUTTER_NOTIFICATION_CLICK"
+  notification_title: "<count> unread rooms"
+  notification_body: "Open app to read the messages"
+  notification_sound: "default"
+  notification_icon: "notifications_icon"
+  notification_tag: "org.matrix.default_notification"
+  notification_android_channel_id: "org.matrix.app.message"
+  fcm:
+    app_id: "org.matrix.awesome_client"
+    admin_key: "1234"
+  apns:
+    app_id: "org.matrix.awesome_client.apns"
