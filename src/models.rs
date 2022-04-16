@@ -66,7 +66,7 @@ pub struct Device {
 	/// Push key
 	pub pushkey: String,
 	/// Timestamp of the last Push key update
-	pub pushkey_ts: Option<u32>,
+	pub pushkey_ts: Option<u64>,
 	/// Pusher specific data
 	pub data: Option<PusherData>,
 	/// A dictionary of customisations made to the way this notification is to
