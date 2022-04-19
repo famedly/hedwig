@@ -28,22 +28,23 @@
 )]
 #![warn(missing_debug_implementations, dead_code, clippy::unwrap_used, clippy::expect_used)]
 
-use std::str::FromStr;
+use std::{collections::HashMap, fs::File, io, net::SocketAddr, str::FromStr, sync::Arc};
 
-use actix_web::{middleware::Logger, web, App, HttpResponse, HttpServer};
-use actix_web_prom::PrometheusMetrics;
-use color_eyre::{
-	eyre::{eyre, WrapErr},
-	Report,
+use axum::{
+	http::StatusCode,
+	routing::{get, get_service, post},
+	AddExtensionLayer, Router,
 };
+use color_eyre::{eyre::WrapErr, Report};
 use matrix_hedwig::{
-	handlers::{json_error_handler, process_notification},
+	handlers::process_notification,
 	metrics::{DeviceCounter, LastSuccessfulCollector, NotificationCounter},
 	settings,
 };
 use prometheus::{opts, IntCounterVec, Registry};
-use settings::Settings;
-use tracing::info;
+use settings::{Pusher, Settings};
+use tower_http::services::ServeFile;
+use tracing::{debug, info};
 use tracing_subscriber::FmtSubscriber;
 
 const VERSION: &str = match option_env!("VERGEN_GIT_SEMVER") {
@@ -51,7 +52,7 @@ const VERSION: &str = match option_env!("VERGEN_GIT_SEMVER") {
 	None => env!("CARGO_PKG_VERSION"),
 };
 
-#[actix_web::main]
+#[tokio::main]
 async fn main() -> Result<(), Report> {
 	let config = Settings::load().wrap_err("Couldn't load the config")?;
 
@@ -95,35 +96,67 @@ async fn main() -> Result<(), Report> {
 	registry
 		.register(Box::new(last_successful_gauge.clone()))
 		.wrap_err("Registering a last succesful gauge")?;
-	let prometheus = PrometheusMetrics::new_with_registry(registry, "api", Some("/metrics"), None)
-		.map_err(|e| eyre!("Initializing prometheus: {}", e))?;
+	//	let prometheus = PrometheusMetrics::new_with_registry(registry, "api",
+	// Some("/metrics"), None) 		.map_err(|e| eyre!("Initializing prometheus: {}",
+	// e))?;
+
+	let apns_clients = config
+		.pushers
+		.iter()
+		.filter_map(|(k, v)| {
+			if let Pusher::Apns(config) = v {
+				Some((|| {
+					let mut private_key =
+						File::open(&config.key_file).wrap_err("Could not read apns key file")?;
+					let client = a2::Client::token(
+						&mut private_key,
+						&config.key_id,
+						&config.team_id,
+						config.endpoint.to_owned().into(),
+					)
+					.wrap_err("Could not create apns client object")?;
+					Ok((k.to_owned(), client))
+				})())
+			} else {
+				None
+			}
+		})
+		.collect::<Result<HashMap<String, a2::Client>, Report>>()?;
 
 	info!("Now listening on {}:{}", config.server.bind_address, config.server.port);
-	let app_config = web::Data::new(config.clone());
-	let fcm_client = web::Data::new(fcm::Client::new());
 
-	HttpServer::new(move || {
-		App::new()
-			.app_data(app_config.clone())
-			.app_data(fcm_client.clone())
-			.app_data(web::Data::new(notification_counter.clone()))
-			.app_data(web::Data::new(device_counter.clone()))
-			.app_data(web::Data::new(last_successful_gauge.clone()))
-			.app_data(web::JsonConfig::default().error_handler(json_error_handler))
-			.wrap(Logger::default())
-			.wrap(prometheus.clone())
-			.service(web::resource("/favicon.ico").to(|| {
-				HttpResponse::Ok()
-					.content_type("image/png")
-					.body(&include_bytes!("../static/favicon.ico")[..])
-			}))
-			.service(web::resource("/health").to(|| actix_web::HttpResponse::Ok().finish()))
-			.service(web::resource("/version").to(|| actix_web::HttpResponse::Ok().body(VERSION)))
-			.route("/_matrix/push/v1/notify", web::post().to(process_notification))
-	})
-	.bind((config.server.bind_address, config.server.port))?
-	.run()
-	.await
-	.wrap_err("Initializing HTTP server")?;
+	// build our application with a route
+	let app = Router::new()
+		.route("/_matrix/push/v1/notify", post(process_notification))
+		.route("/health", get(|| async { "" }))
+		.route("/version", get(|| async { VERSION }))
+		.route(
+			"/favicon.ico",
+			get_service(ServeFile::new("./static/favicon.ico")).handle_error(
+				|error: io::Error| async move {
+					(
+						StatusCode::INTERNAL_SERVER_ERROR,
+						format!("Unhandled internal error: {}", error),
+					)
+				},
+			),
+		)
+		.layer(AddExtensionLayer::new(config.clone()))
+		.layer(AddExtensionLayer::new(Arc::new(fcm::Client::new())))
+		.layer(AddExtensionLayer::new(Arc::new(apns_clients)))
+		.layer(AddExtensionLayer::new(notification_counter))
+		.layer(AddExtensionLayer::new(device_counter))
+		.layer(AddExtensionLayer::new(last_successful_gauge));
+
+	// TODO: prometheus
+
+	let addr: SocketAddr = format!("{}:{}", &config.server.bind_address, &config.server.port)
+		.parse()
+		.wrap_err("Failed to construct the bind address")?;
+	debug!("listening on {}", addr);
+	axum::Server::bind(&addr)
+		.serve(app.into_make_service())
+		.await
+		.wrap_err("HTTP Server failed")?;
 	Ok(())
 }

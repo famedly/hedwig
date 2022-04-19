@@ -18,31 +18,91 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::collections::HashMap;
+
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 
-/// Hedwig configuration
+/// Apns Endpoint settings
 #[derive(Deserialize, Debug, Clone)]
-pub struct Hedwig {
-	/// Application ID
-	pub app_id: String,
-	/// FCM Administration key
-	pub fcm_admin_key: String,
+#[serde(rename_all = "snake_case")]
+pub enum ApnsEndpoint {
+	/// The Apns endpoint is a production endpoint
+	Production,
+	/// The Apns endpoint is a sandbox endpoint
+	Sandbox,
+}
+
+impl From<ApnsEndpoint> for a2::Endpoint {
+	fn from(val: ApnsEndpoint) -> Self {
+		match val {
+			ApnsEndpoint::Production => Self::Production,
+			ApnsEndpoint::Sandbox => Self::Sandbox,
+		}
+	}
+}
+
+/// Pusher config for an FCM pusher, where the pusher receives the cleartext
+/// notif
+#[derive(Debug, Deserialize, Clone)]
+pub struct FcmPusher {
+	/// The FCM admin key
+	pub admin_key: String,
+	/// The android click action for the resulting notification
+	pub click_action: Option<String>,
+	/// Notification icon
+	pub icon: Option<String>,
+	/// Notification tag
+	pub tag: Option<String>,
+}
+
+/// Pusher config for an FCM data pusher, where the client can process the
+/// notification themself
+#[derive(Debug, Deserialize, Clone)]
+pub struct FcmDataPusher {
+	/// The FCM admin key
+	pub admin_key: String,
+}
+
+/// Pusher config for an APNS pusher
+#[derive(Debug, Deserialize, Clone)]
+pub struct ApnsPusher {
+	/// The key file for APNS
+	pub key_file: String,
+	/// The key id of the specified key file
+	pub key_id: String,
+	/// The team id for APNS
+	pub team_id: String,
+	/// Optionally, the topic needed for APNS
+	pub topic: Option<String>,
+	/// Which APNS endpoint to use, one of production or sandbox
+	pub endpoint: ApnsEndpoint,
+}
+
+/// Pusher config
+#[derive(Debug, Deserialize, Clone)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum Pusher {
+	/// Pusher config for an FCM pusher, where the pusher receives the cleartext
+	/// notif
+	Fcm(FcmPusher),
+	/// Pusher config for an FCM data pusher, where the client can process the
+	/// notification themself
+	FcmData(FcmDataPusher),
+	/// Pusher config for an APNS pusher
+	Apns(ApnsPusher),
+}
+
+/// Notification configuration
+#[derive(Deserialize, Debug, Clone)]
+pub struct Notification {
 	/// The text to display in a notification (replaces <count> tag with a
 	/// notification count
-	pub fcm_notification_title: String,
+	pub title: String,
 	/// The text to display as a notification body
-	pub fcm_notification_body: String,
+	pub body: String,
 	/// What sound should be played as a part of notification
-	pub fcm_notification_sound: String,
-	/// Notification icon
-	pub fcm_notification_icon: String,
-	/// Notification tag
-	pub fcm_notification_tag: String,
-	/// ID of the android channel
-	pub fcm_notification_android_channel_id: String,
-	/// Action to trigger on the notification click
-	pub fcm_notification_click_action: String,
+	pub sound: Option<String>,
 }
 
 /// Push gateway server configuration
@@ -68,8 +128,10 @@ pub struct Settings {
 	pub log: Log,
 	/// Server settings
 	pub server: Server,
-	/// Hedwig settings
-	pub hedwig: Hedwig,
+	/// Notification settings
+	pub notification: Notification,
+	/// Pushers settings
+	pub pushers: HashMap<String, Pusher>,
 }
 
 impl Settings {
