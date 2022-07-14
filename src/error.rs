@@ -2,7 +2,7 @@
 
 /*
  *   Matrix Hedwig
- *   Copyright (C) 2019, 2020, 2021 Famedly GmbH
+ *   Copyright (C) 2019, 2020, 2021, 2022 Famedly GmbH
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU Affero General Public License as
@@ -19,7 +19,8 @@
  */
 use std::fmt::{Display, Formatter, Result as FmtResult};
 
-use actix_web::{http::StatusCode, HttpResponse, ResponseError};
+//use actix_web::{http::StatusCode, HttpResponse, ResponseError};
+use axum::{http::StatusCode, response::Response, Json};
 use serde::Serialize;
 use tracing::error;
 
@@ -28,42 +29,59 @@ use tracing::error;
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ErrCode {
 	/// The notification json is malformed
-	MBadJson,
-	/// The notification json is missing some parameters
-	MMissingParam,
-	/// Generic error
-	MUnknown,
+	BadJson,
+	/// Fcm notification building/sending failure
+	FcmFailed,
+	/// Fcm Auth failure
+	FcmAuthFailed,
 }
 
 /// Matrix error
 #[derive(Serialize, Debug)]
-pub struct MatrixError {
+pub struct HedwigError {
 	/// The error text
 	pub error: String,
 	/// Matrix-formatted Error code
 	pub errcode: ErrCode,
 }
 
-impl MatrixError {
-	/// Generate a generic error code
-	pub fn unknown() -> Self {
-		Self { error: String::from("Internal server error"), errcode: ErrCode::MUnknown }
-	}
-}
-
-impl Display for MatrixError {
+impl Display for HedwigError {
 	fn fmt(&self, f: &mut Formatter) -> FmtResult {
 		write!(f, "{}", serde_json::to_string_pretty(self).map_err(|_| std::fmt::Error::default())?)
 	}
 }
 
-impl ResponseError for MatrixError {
-	fn error_response(&self) -> HttpResponse {
-		error!("{}", &self.error);
-		let status_code = match self.errcode {
-			ErrCode::MUnknown => StatusCode::BAD_GATEWAY,
-			_ => StatusCode::BAD_REQUEST,
-		};
-		HttpResponse::build(status_code).json(self)
+impl From<firebae_cm::Error> for HedwigError {
+	fn from(err: firebae_cm::Error) -> Self {
+		error!("fcm error: {}", err);
+		Self {
+			error: "Something went wrong while trying to interact with fcm".to_owned(),
+			errcode: ErrCode::FcmFailed,
+		}
+	}
+}
+
+impl From<gcp_auth::Error> for HedwigError {
+	fn from(err: gcp_auth::Error) -> Self {
+		error!("failed to get fcm token!: {}", err);
+		Self {
+			error: "Failed to authenticate with push service!".to_owned(),
+			errcode: ErrCode::FcmAuthFailed,
+		}
+	}
+}
+
+impl From<serde_json::Error> for HedwigError {
+	fn from(err: serde_json::Error) -> Self {
+		Self { error: err.to_string(), errcode: ErrCode::BadJson }
+	}
+}
+
+impl axum::response::IntoResponse for HedwigError {
+	fn into_response(self) -> Response {
+		error!("Failed extracting request body {}", &self.error);
+		let mut res = Json(self).into_response();
+		*res.status_mut() = StatusCode::BAD_REQUEST;
+		res
 	}
 }

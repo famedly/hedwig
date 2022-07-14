@@ -1,5 +1,3 @@
-//! A matrix push gateway implementation
-
 /*
  *   Matrix Hedwig
  *   Copyright (C) 2019, 2020, 2021, 2022 Famedly GmbH
@@ -18,10 +16,29 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-pub mod api;
-pub mod error;
-pub mod fcm;
-pub mod jitter;
-pub mod models;
-pub mod pusher;
-pub mod settings;
+#![allow(
+	clippy::dbg_macro,
+	clippy::expect_used,
+	clippy::missing_docs_in_private_items,
+	clippy::print_stderr,
+	clippy::print_stdout,
+	clippy::unwrap_used
+)]
+
+use std::time::Duration;
+
+use matrix_hedwig::jitter;
+
+#[test]
+fn jitter_test() {
+	// Examples from https://github.com/Famedly/matrix-doc/blob/jcgruenhage/delayed-push/proposals/3359-delayed-push.md#recommended-values-of-random_delay
+	for (i, o) in [
+		(0.25, 13.656_854_249_492_383),
+		(0.5, 6.828_427_124_746_192),
+		(1.0, 3.414_213_562_373_096),
+		(10.0, 0.341_421_356_237_309_5),
+		(100.0, 0.034_142_135_623_730_96),
+	] {
+		assert_eq!(jitter::Jitter::jitter(i), Duration::from_secs_f64(o));
+	}
+}

@@ -2,7 +2,7 @@
 
 /*
  *   Matrix Hedwig
- *   Copyright (C) 2019, 2020, 2021 Famedly GmbH
+ *   Copyright (C) 2019, 2020, 2021, 2022 Famedly GmbH
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU Affero General Public License as
@@ -18,6 +18,8 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::net::IpAddr;
+
 use config::{Config, ConfigError, Environment, File};
 use serde::Deserialize;
 
@@ -26,8 +28,11 @@ use serde::Deserialize;
 pub struct Hedwig {
 	/// Application ID
 	pub app_id: String,
+	/// Maximum amount of jitter that can be introduced to notifications in
+	/// seconds (msc3359), 0 to disable
+	pub max_jitter_delay: f64,
 	/// FCM Administration key
-	pub fcm_admin_key: String,
+	pub fcm_service_account_token_path: String,
 	/// The text to display in a notification (replaces <count> tag with a
 	/// notification count
 	pub fcm_notification_title: String,
@@ -51,7 +56,7 @@ pub struct Server {
 	/// Push gateway port
 	pub port: u16,
 	/// IP address the server is listening on
-	pub bind_address: String,
+	pub bind_address: IpAddr,
 }
 
 /// Log settings
@@ -75,10 +80,11 @@ pub struct Settings {
 impl Settings {
 	/// Load settings from file
 	pub fn load() -> Result<Self, ConfigError> {
-		let mut conf = Config::new();
-		conf.merge(File::with_name("config.yaml"))?;
-		conf.merge(Environment::with_prefix("push_gw").separator("_"))?;
-		conf.set_default("log.level", "INFO")?;
-		conf.try_into()
+		Config::builder()
+			.add_source(File::with_name("config.yaml"))
+			.add_source(Environment::with_prefix("push_gw").separator("_"))
+			.set_default("log.level", "INFO")?
+			.build()?
+			.try_deserialize()
 	}
 }
