@@ -2,7 +2,7 @@
 
 /*
  *   Matrix Hedwig
- *   Copyright (C) 2019, 2020, 2021 Famedly GmbH
+ *   Copyright (C) 2019, 2020, 2021, 2022 Famedly GmbH
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU Affero General Public License as
@@ -18,29 +18,21 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::collections::HashMap;
+
+use async_trait::async_trait;
+use axum::{
+	body::Body,
+	extract::{ContentLengthLimit, FromRequest, RequestParts},
+	Json,
+};
+use opentelemetry::metrics::{Counter, Meter, ValueRecorder};
 use serde::{Deserialize, Serialize};
 
-use crate::error::{ErrCode, MatrixError};
-
-/// The notification itself
-#[derive(Deserialize, Debug)]
-pub struct PushNotification {
-	/// Notification
-	pub notification: Notification,
-}
-
-impl PushNotification {
-	/// Extract the first device from the notification list
-	pub fn first_device(&self) -> Result<&Device, MatrixError> {
-		self.notification.devices.first().ok_or(MatrixError {
-			error: String::from("No devices were provided"),
-			errcode: ErrCode::MBadJson,
-		})
-	}
-}
+use crate::error::{ErrCode, HedwigError};
 
 /// The notification priority
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "lowercase")]
 pub enum Priority {
 	/// Low priority
@@ -50,7 +42,7 @@ pub enum Priority {
 }
 
 /// Notification counts
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Counts {
 	/// Unread notifications
 	pub unread: Option<u16>,
@@ -58,8 +50,18 @@ pub struct Counts {
 	pub missed_calls: Option<u16>,
 }
 
+/// Device data
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct Data {
+	/// The data message format
+	pub data_message: Option<String>,
+	/// The rest of the device data
+	#[serde(flatten)]
+	pub data: HashMap<String, serde_json::Value>,
+}
+
 /// The device notification is sent for
-#[derive(Deserialize, Serialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Device {
 	/// ID of the application
 	pub app_id: String,
@@ -68,35 +70,50 @@ pub struct Device {
 	/// Timestamp of the last Push key update
 	pub pushkey_ts: Option<u64>,
 	/// Pusher specific data
-	pub data: Option<PusherData>,
+	pub data: Option<Data>,
 	/// A dictionary of customisations made to the way this notification is to
 	/// be presented.
-	pub tweaks: Option<Tweaks>,
+	pub tweaks: Option<serde_json::Value>,
 }
 
-/// Pusher specific data
-#[derive(Deserialize, Serialize, Debug)]
-pub struct PusherData {
-	/// Url to send notifications to
-	pub url: Option<String>,
-	/// The format to use when sending notifications to the Push Gateway.
-	pub format: Option<String>,
-	/// The algorithm used to potentially encrypt the push payload.
-	pub algorithm: Option<String>,
+/// What kind of data message should be sent (if any)
+#[derive(Debug)]
+pub enum DataMessageType {
+	/// No Data message
+	None,
+	/// Android data message
+	Android,
+	/// Apns data message
+	Ios, // Apple would hate me for this capitalization
 }
 
-/// A dictionary of customisations made to the way this notification is to be
-/// presented.
-#[derive(Deserialize, Serialize, Debug)]
-pub struct Tweaks {
-	/// Should sound be played
-	pub sound: Option<String>,
-	/// Should the message be highlighted
-	pub highlight: Option<bool>,
+impl Device {
+	/// Returns what kind of data message is wanted (if any)
+	#[must_use]
+	pub fn data_message_type(&self) -> DataMessageType {
+		// Deprecated, use the data field!
+		// TODO: remove once clients have switched to the new format
+		if self.app_id.ends_with(".data_message") {
+			return DataMessageType::Android;
+		}
+
+		match self.data.as_ref().and_then(|d| d.data_message.as_ref()) {
+			Some(msg) if msg == "android" => DataMessageType::Android,
+			Some(msg) if msg == "ios" => DataMessageType::Ios,
+			_ => DataMessageType::None,
+		}
+	}
 }
 
-/// The notification body
+/// The notification request body
 #[derive(Deserialize, Serialize, Debug)]
+pub struct NotificationRequest {
+	/// The actual notification
+	pub notification: Notification,
+}
+
+/// The notification data
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Notification {
 	/// The Matrix event ID
 	pub event_id: Option<String>,
@@ -127,6 +144,99 @@ pub struct Notification {
 	pub ephemeral: Option<String>,
 	/// The mac of an encrypted push payload
 	pub mac: Option<String>,
+	/// This is true if the user receiving the notification is the subject of a
+	/// member event (i.e. the state_key of the member event is equal to the
+	/// user’s Matrix ID).
+	pub user_is_target: Option<bool>,
+}
+
+impl Notification {
+	/// Returns the data to be attached to the notification
+	pub fn data(&self, device: &Device) -> Result<NotificationData, HedwigError> {
+		Ok(NotificationData {
+			content: serde_json::to_string(&self.content)?,
+			counts: serde_json::to_string(&self.counts)?,
+			// Pretending there is only one device to avoid going over any size limits
+			devices: serde_json::to_string(&[device])?,
+			event_id: self.event_id.clone(),
+			prio: serde_json::to_string(&self.prio)?,
+			room_alias: self.room_alias.clone(),
+			room_id: self.room_id.clone(),
+			room_name: self.room_name.clone(),
+			sender: self.sender.clone(),
+			sender_display_name: self.sender_display_name.clone(),
+			r#type: self.r#type.clone(),
+			ciphertext: self.ciphertext.clone(),
+			ephemeral: self.ephemeral.clone(),
+			mac: self.mac.clone(),
+			user_is_target: self.user_is_target.map(|x| x.to_string()),
+		})
+	}
+}
+
+#[async_trait]
+impl FromRequest<Body> for Notification {
+	type Rejection = HedwigError;
+
+	async fn from_request(req: &mut RequestParts<Body>) -> Result<Self, Self::Rejection> {
+		// TODO: 15000 was chosen rather arbitrarily
+		let notification = req
+			.extract::<ContentLengthLimit<Json<NotificationRequest>, 15000>>()
+			.await
+			.map_err(|err| HedwigError { error: err.to_string(), errcode: ErrCode::BadJson })?;
+		let notification = notification.notification.clone();
+
+		Ok(notification)
+	}
+}
+
+/// The notification data to be pushed to the client
+#[derive(Deserialize, Serialize, Debug)]
+pub struct NotificationData {
+	/// The Matrix event ID
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub event_id: Option<String>,
+	/// The Matrix room ID
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub room_id: Option<String>,
+	/// The event type
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub r#type: Option<String>,
+	/// The sender of the event
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub sender: Option<String>,
+	/// The sender display name
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub sender_display_name: Option<String>,
+	/// The name of the room in which the event occurred.
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub room_name: Option<String>,
+	/// An alias to display for the room in which the event occurred.
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub room_alias: Option<String>,
+	/// The priority of the notification. If omitted, high is assumed.
+	pub prio: String,
+	/// This is a dictionary of the current number of unacknowledged
+	/// communications for the recipient user.
+	pub counts: String,
+	/// The content field from the event, if present.
+	pub content: String,
+	/// This is an array of devices that the notification should be sent to.
+	pub devices: String,
+	/// The ciphertext of an encrypted push payload
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub ciphertext: Option<String>,
+	/// The ephemeral key of an encrypted push payload
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub ephemeral: Option<String>,
+	/// The mac of an encrypted push payload
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub mac: Option<String>,
+	/// This is true if the user receiving the notification is the subject of a
+	/// member event (i.e. the state_key of the member event is equal to the
+	/// user’s Matrix ID).
+	#[serde(skip_serializing_if = "Option::is_none")]
+	pub user_is_target: Option<String>,
 }
 
 /// Response from the push gateway
@@ -134,4 +244,36 @@ pub struct Notification {
 pub struct PushGatewayResponse {
 	/// The list of rejected notification push keys
 	pub rejected: Vec<String>,
+}
+
+/// Metrics for prometheus
+#[derive(Debug)]
+pub struct Metrics {
+	/// Counter for successful pushes categorised by device type
+	pub successful_pushes: Counter<u64>,
+	/// Counter for failed pushes categorised by device type
+	pub failed_pushes: Counter<u64>,
+	/// Histogram of rolled jitter values
+	pub jitter: ValueRecorder<f64>,
+}
+
+impl Metrics {
+	/// Create and register hedwigs prometheus metrics
+	#[must_use]
+	pub fn new(meter: &Meter) -> Self {
+		Self {
+			successful_pushes: meter
+				.u64_counter("pushes.successful")
+				.with_description("Successful pushes")
+				.init(),
+			failed_pushes: meter
+				.u64_counter("pushes.failed")
+				.with_description("Failed pushes")
+				.init(),
+			jitter: meter
+				.f64_value_recorder("jitter")
+				.with_description("Rolled jitter delays")
+				.init(),
+		}
+	}
 }

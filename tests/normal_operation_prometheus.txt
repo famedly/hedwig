@@ -1,0 +1,25 @@
+# HELP http_requests_duration_seconds http.requests.duration.seconds
+# TYPE http_requests_duration_seconds histogram
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="FLOAT"} 8
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="FLOAT"} 8
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="FLOAT"} 8
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="+Inf"} 8
+http_requests_duration_seconds_sum{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200"} FLOAT
+http_requests_duration_seconds_count{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200"} 8
+# HELP http_requests_total http.requests.total
+# TYPE http_requests_total counter
+http_requests_total{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200"} 8
+# HELP jitter Rolled jitter delays
+# TYPE jitter histogram
+jitter_bucket{service_name="Hedwig",le="FLOAT"} 8
+jitter_bucket{service_name="Hedwig",le="FLOAT"} 8
+jitter_bucket{service_name="Hedwig",le="FLOAT"} 8
+jitter_bucket{service_name="Hedwig",le="+Inf"} 8
+jitter_sum{service_name="Hedwig"} 0
+jitter_count{service_name="Hedwig"} 8
+# HELP pushes_successful Successful pushes
+# TYPE pushes_successful counter
+pushes_successful{device_type="Android",service_name="Hedwig"} 2
+pushes_successful{device_type="AndroidLegacy",service_name="Hedwig"} 2
+pushes_successful{device_type="Ios",service_name="Hedwig"} 2
+pushes_successful{device_type="None",service_name="Hedwig"} 2

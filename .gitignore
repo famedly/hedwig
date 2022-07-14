@@ -1,2 +1,5 @@
+.env
 /target
 config.yaml
+fcm-auth.json
+tokencache.json

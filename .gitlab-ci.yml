@@ -1,102 +1,53 @@
+# Include our templates for rust and docker:
 include:
   - project: 'famedly/company/devops/templates/ci-cd'
-    ref: 'docker-v1'
-    file: '/docker.yml'
+    ref: rust-v1
+    file:
+      - '/rust.yml'
   - project: 'famedly/company/devops/templates/ci-cd'
-    ref: 'rust-v1'
-    file: '/rust.yml'
+    ref: docker-v1
+    file:
+      - '/docker.yml'
 
-
+# Different CI stages, that are shown as dots in the GitLab UI and
+# are executed one after another
 stages:
   - test
-  - build
+  - doc
   - deploy
 
+# Check stage for formatting, lints and test checking
 cargo-check:
+  # Extend from the template
   extends: .cargo_check
-
-cargo-build-amd64:
-  extends: .cargo_build
+  # Overwrite the script.
+  # Optional, remove if not needed
   script:
-    - !reference [.cargo_build, script]
-    - mv config.sample.yaml ./target/release/config.yaml
+    # Run these commands in order, so execute a script in the repository first
+    - bash tests/setup.sh
+    # Run the script that was in the template, that we overwrote
+    - !reference [.cargo_check, script]
 
-cargo-build-armv7:
-  extends: .cargo_build
-  variables:
-    RUST_ADDITIONAL_PACKAGES: "gcc-arm-linux-gnueabihf libc6-dev-armhf-cross"
-  script:
-    - mkdir .cargo && mv cargo/config .cargo/config
-    - rustup target add armv7-unknown-linux-gnueabihf
-    - rustup show
-    - cargo build --target armv7-unknown-linux-gnueabihf --release
-    - mv config.sample.yaml ./target/release/config.yaml
-  artifacts:
-    paths:
-      - target/armv7-unknown-linux-gnueabihf/release/
+# Documentation pages generation and deployment to the GitLab UI.
+# Only runs on the main branch.
+pages:
+  # just included (-> activated) from the template
+  extends: .cargo_doc
 
-cargo-build-aarch64:
-  extends: .cargo_build
-  variables:
-    TARGET_CC: "/usr/bin/aarch64-linux-gnu-gcc-10"
-    TARGET_LD: "/usr/bin/aarch64-linux-gnu-gcc-10"
-    TARGET_AR: "/usr/bin/aarch64-linux-gnu-gcc-ar-10"
-    CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER: "aarch64-linux-gnu-gcc-10"
-    RUST_ADDITIONAL_PACKAGES: "gcc-10-aarch64-linux-gnu libc6-dev-arm64-cross"
-  script:
-    - mkdir .cargo && mv cargo/config .cargo/config
-    - rustup target add aarch64-unknown-linux-gnu
-    - rustup show
-    - cargo build --target aarch64-unknown-linux-gnu --release
-    - mv config.sample.yaml ./target/release/config.yaml
-  artifacts:
-    paths:
-      - target/aarch64-unknown-linux-gnu/release/
-
+# Build and release the docker container
+# Only runs on the main branch.
 docker-releases:
+  # just included (-> activated) from the template
   extends: .docker_releases
-  needs: ["cargo-build-amd64"]
 
-docker-releases-armv7:
-  extends: .docker_releases
-  needs: ["cargo-build-armv7"]
-  variables:
-    DOCKER_TAG: "${CI_COMMIT_TAG}-armv7"
-
-docker-releases-aarch64:
-  extends: .docker_releases
-  needs: ["cargo-build-aarch64"]
-  variables:
-    DOCKER_TAG: "${CI_COMMIT_TAG}-aarch64"
-
+# Build and release the docker container, tagging latest as well
+# Only runs on the main branch.
 docker-tags:
+  # just included (-> activated) from the template
   extends: .docker_tags
-  needs: ["cargo-build-amd64"]
 
-docker-tags-armv7:
-  extends: .docker_tags
-  needs: ["cargo-build-armv7"]
-  variables:
-    DOCKER_TAG: "${CI_COMMIT_TAG}-armv7"
-
-docker-tags-aarch64:
-  extends: .docker_tags
-  needs: ["cargo-build-aarch64"]
-  variables:
-    DOCKER_TAG: "${CI_COMMIT_TAG}-aarch64"
-
-docker-branches-amd64:
+# Build the docker container for any branch and
+# release it with its commit hash
+docker-branches:
+  # just included (-> activated) from the template
   extends: .docker_branches
-  needs: ["cargo-build-amd64"]
-
-docker-branches-armv7:
-  extends: .docker_branches
-  needs: ["cargo-build-armv7"]
-  variables:
-    DOCKER_TAG: "${CI_COMMIT_REF_SLUG}-armv7"
-
-docker-branches-aarch64:
-  extends: .docker_branches
-  needs: ["cargo-build-aarch64"]
-  variables:
-    DOCKER_TAG: "${CI_COMMIT_REF_SLUG}-aarch64"
