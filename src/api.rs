@@ -65,13 +65,29 @@ pub async fn matrix_push(
 			format!("{:?}", dev.data_message_type())
 		};
 
-		if let Err(e) = pusher::push_notification(&notification, dev, &fcm_sender, &settings).await
-		{
-			debug!("A push failed: {:?}", e);
-			counters.failed_pushes.add(1, &[KeyValue::new("device_type", device_type)]);
-			rejected.push(dev.pushkey.clone());
-		} else {
-			counters.successful_pushes.add(1, &[KeyValue::new("device_type", device_type)]);
+		let mut retry_time = Duration::from_millis(250);
+		let mut attempt = 0;
+		loop {
+			if let Err(e) =
+				pusher::push_notification(&notification, dev, &fcm_sender, &settings).await
+			{
+				attempt += 1;
+				if attempt > settings.hedwig.fcm_push_max_retries {
+					debug!("A push failed: {:?}", e);
+					counters
+						.failed_pushes
+						.add(1, &[KeyValue::new("device_type", device_type.clone())]);
+					rejected.push(dev.pushkey.clone());
+					break;
+				}
+				tokio::time::sleep(retry_time).await;
+				retry_time *= 2;
+			} else {
+				counters
+					.successful_pushes
+					.add(1, &[KeyValue::new("device_type", device_type.clone())]);
+				break;
+			}
 		}
 	}
 

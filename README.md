@@ -28,7 +28,8 @@ This project name aged badly, trans rights are human rights!
 ### Hedwig configuration:
 
 Please reference `config.sample.yaml` for which settings can be set. The configuration file needs to be named `config.yaml`
-The `fcm_service_account_token_path` setting needs to point to an FCM service account token json file. 
+The `fcm_service_account_token_path` setting needs to point to an FCM service account token json file.  
+The `fcm_push_max_retries` setting specifies how many attempts at pushing a notification to a device should be made before giving up and reporting the push key as dead.
 
 There is partial support for the proposed delayed push MSC which is defined [here](https://github.com/matrix-org/matrix-spec-proposals/pull/3359), a maximum jitter delay can be specified with the `max_jitter_delay` setting. Set to 0.0 to disable the jitter completely.
 

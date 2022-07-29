@@ -60,6 +60,7 @@ async fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Router<Bo
 		let hedwig = settings::Hedwig {
 			app_id: "com.famedly.🦊".to_owned(),
 			max_jitter_delay: 2.0,
+			fcm_push_max_retries: 4,
 			fcm_service_account_token_path: "placeholder".to_owned(),
 			fcm_notification_title: "🦊 <count> 🦊".to_owned(),
 			fcm_notification_body: "read the notification pls :c".to_owned(),
@@ -194,7 +195,7 @@ async fn check_prom(
 		service.call(http::Request::get("/metrics").body(axum::body::Body::empty())?).await?;
 	let data = resp.body_mut().data().await.unwrap()?;
 	let data = std::str::from_utf8(&data)?.to_owned();
-	let re = Regex::new(r"0\.[0-9]+")?;
+	let re = Regex::new(r"[0-9]\.[0-9]+")?;
 	let data = re.replace_all(&data, "FLOAT");
 
 	assert_eq!(data, std::fs::read_to_string(filename)?);
