@@ -59,6 +59,8 @@ pub async fn push_notification(
 
 	match device.data_message_type() {
 		DataMessageType::Android => {
+			// Used on android for background notification handling
+
 			let mut android_config = AndroidConfig::new();
 			android_config.direct_boot_ok(false);
 			android_config.priority(AndroidMessagePriority::High);
@@ -66,12 +68,13 @@ pub async fn push_notification(
 			body.data(notification.data(device)?)?.android(android_config);
 		}
 		DataMessageType::Ios => {
-			// Best effort, untested implementation of apns data notifications.
-			// All existing apps (as of 27.06.2022) will not trigger this codepath though
-			// Waiting for iOS swift background notification handler to be finished up
+			// Used for background notification handling on iOS, if enabled by the app
 
-			// Should be fallback if apple decide not to run the service
-			if count != 0 {
+			// If there's no room_id then this is a badge only notification that must not
+			// have any notification content
+			if notification.room_id.is_some() {
+				// If apple decide not to run the service extension there needs to be a fallback
+				// notification
 				body.notification(fcm_notification);
 			}
 
@@ -86,6 +89,7 @@ pub async fn push_notification(
 				}
 			}));
 
+			// Priority needs to be 5 for the service extension to be used
 			ios_config.headers(json!({"apns-priority": "5"}));
 
 			body.apns(ios_config);
