@@ -99,7 +99,9 @@ pub async fn push_notification(
 			// This codepath runs on old versions of the iOS app also works fine with
 			// android ones
 
-			if count != 0 {
+			// If there's no room_id then this is a badge only notification that must not
+			// have any notification content
+			if notification.room_id.is_some() {
 				body.notification(fcm_notification);
 			}
 
