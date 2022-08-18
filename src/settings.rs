@@ -25,7 +25,7 @@ use serde::{de::Error, Deserialize, Deserializer};
 use tracing_appender::rolling::Rotation;
 
 /// Hedwig configuration
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Debug, Deserialize)]
 pub struct Hedwig {
 	/// Application ID
 	pub app_id: String,
@@ -54,7 +54,7 @@ pub struct Hedwig {
 }
 
 /// Push gateway server configuration
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize)]
 pub struct Server {
 	/// Push gateway port
 	pub port: u16,
@@ -75,7 +75,7 @@ pub struct LogFileOuput {
 }
 
 /// Log settings
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize)]
 pub struct Log {
 	/// Log level (DEBUG, INFO, ERROR etc.)
 	pub level: String,
@@ -102,7 +102,7 @@ where
 }
 
 /// Main settings struct
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize)]
 pub struct Settings {
 	/// Log settings
 	pub log: Log,
@@ -114,9 +114,9 @@ pub struct Settings {
 
 impl Settings {
 	/// Load settings from file
-	pub fn load() -> Result<Self, ConfigError> {
+	pub fn load(filename: &str) -> Result<Self, ConfigError> {
 		Config::builder()
-			.add_source(File::with_name("config.yaml"))
+			.add_source(File::with_name(filename))
 			.add_source(Environment::with_prefix("push_gw").separator("_"))
 			.set_default("log.level", "INFO")?
 			.build()?
