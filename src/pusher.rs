@@ -24,7 +24,7 @@ use firebae_cm::{
 };
 use serde_json::json;
 use tokio::sync::Mutex;
-use tracing::info;
+use tracing::debug;
 
 use crate::{
 	error::{ErrCode, HedwigError},
@@ -42,7 +42,6 @@ pub async fn push_notification(
 	settings: &Settings,
 ) -> Result<(), HedwigError> {
 	if !device.app_id.starts_with(&settings.hedwig.app_id) {
-		info!("Someone tried to push with a bad app id");
 		return Err(HedwigError { error: "Invalid app id!".to_owned(), errcode: ErrCode::BadJson });
 	}
 
@@ -56,6 +55,8 @@ pub async fn push_notification(
 
 	let receiver = firebae_cm::Receiver::Token(device.pushkey.clone());
 	let mut body = MessageBody::new(receiver);
+
+	debug!("Pushing notification to {:?} device", device.data_message_type());
 
 	match device.data_message_type() {
 		DataMessageType::Android => {

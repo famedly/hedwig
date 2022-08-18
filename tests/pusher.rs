@@ -53,7 +53,7 @@ impl FcmSender for FakeSender {
 
 async fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Router<Body> {
 	let settings = {
-		let log = settings::Log { level: "DEBUG".to_owned() };
+		let log = settings::Log { file_output: None, level: "DEBUG".to_owned() };
 
 		let server = settings::Server { port: 4567, bind_address: [0, 0, 0, 0].into() };
 

@@ -31,7 +31,7 @@ use axum::{
 use color_eyre::{eyre::WrapErr, Report};
 use opentelemetry::KeyValue;
 use tokio::sync::{Mutex, RwLock};
-use tracing::debug;
+use tracing::{debug, info};
 
 use crate::{
 	fcm::FcmSender,
@@ -59,6 +59,7 @@ pub async fn matrix_push(
 	counters.jitter.record(jitter_roll.as_secs_f64(), &[]);
 	tokio::time::sleep(jitter_roll).await;
 
+	debug!("Got notification to be pushed to {} devices.", notification.devices.len());
 	for dev in &notification.devices {
 		let device_type = if dev.app_id.ends_with(".data_message") {
 			"AndroidLegacy".to_owned()
@@ -74,13 +75,18 @@ pub async fn matrix_push(
 			{
 				attempt += 1;
 				if attempt > settings.hedwig.fcm_push_max_retries {
-					debug!("A push failed: {:?}", e);
+					info!(
+						"A push failed (device type: {}), even after retrying: {}",
+						device_type, e
+					);
 					counters
 						.failed_pushes
 						.add(1, &[KeyValue::new("device_type", device_type.clone())]);
 					rejected.push(dev.pushkey.clone());
 					break;
 				}
+				debug!("A push failed, retrying in a bit. (Error: {})", e);
+
 				tokio::time::sleep(retry_time).await;
 				retry_time *= 2;
 			} else {
@@ -94,6 +100,7 @@ pub async fn matrix_push(
 
 	// If we pushed anything successfully it counts towards the jitter frequency
 	if rejected.len() < notification.devices.len() {
+		debug!("Sent off at least one notification sucessfully, adjusting jitter accordingly");
 		jitter.write().await.push_successful_jitter(start);
 	}
 

@@ -1014,6 +1014,7 @@ dependencies = [
  "tokio",
  "tower",
  "tracing",
+ "tracing-appender",
  "tracing-subscriber",
  "vergen",
 ]
@@ -1898,6 +1899,7 @@ version = "0.3.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2702e08a7a860f005826c6815dcac101b19b5eb330c27fe4a5928fec1d20ddd"
 dependencies = [
+ "itoa",
  "libc",
  "num_threads",
  "serde",
@@ -2052,6 +2054,17 @@ dependencies = [
  "pin-project-lite",
  "tracing-attributes",
  "tracing-core",
+]
+
+[[package]]
+name = "tracing-appender"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09d48f71a791638519505cefafe162606f706c25592e4bde4d97600c0195312e"
+dependencies = [
+ "crossbeam-channel",
+ "time 0.3.9",
+ "tracing-subscriber",
 ]
 
 [[package]]

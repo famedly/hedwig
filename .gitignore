@@ -1,5 +1,6 @@
 .env
 /target
+/logs
 config.yaml
 fcm-auth.json
 tokencache.json

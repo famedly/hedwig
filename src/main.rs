@@ -31,31 +31,46 @@ use std::str::FromStr;
 
 use color_eyre::{eyre::WrapErr, Report};
 use tracing::info;
+use tracing_appender::rolling::RollingFileAppender;
 use tracing_subscriber::FmtSubscriber;
 
 use crate::fcm::FcmSenderImpl;
 
 #[tokio::main]
+// Need to be able to print errors before the logger is up
+#[allow(clippy::print_stderr)]
 async fn main() -> Result<(), Report> {
 	// Complete failure if config file is missing
 	let settings = settings::Settings::load()
 		.wrap_err("Failed to load settings!\nPlease reference config.sample.yaml and then put your config at config.yaml")?;
 
-	let subscriber = FmtSubscriber::builder()
-		.with_max_level(
-			tracing::Level::from_str(&settings.log.level)
-				.wrap_err("Initializing logging failed")?,
+	let subscriber = FmtSubscriber::builder().with_max_level(
+		tracing::Level::from_str(&settings.log.level).wrap_err("Initializing logging failed")?,
+	);
+
+	if let Some(output) = &settings.log.file_output {
+		// Wants file output
+		let file_appender = RollingFileAppender::new(
+			output.rolling_frequency.clone(),
+			&output.directory,
+			&output.prefix,
+		);
+
+		tracing::subscriber::set_global_default(
+			subscriber.with_writer(file_appender).with_ansi(false).finish(),
 		)
-		.finish();
+	} else {
+		// No file output
+		tracing::subscriber::set_global_default(subscriber.finish())
+	}
+	.wrap_err("Setting up default subscriber")?;
 
-	tracing::subscriber::set_global_default(subscriber)
-		.wrap_err("Setting up default subscriber")?;
-
-	info!("{:?}", settings);
+	info!("Launching with settings: {:?}", settings);
 
 	let fcm_auth = FcmSenderImpl::new(&settings.hedwig.fcm_service_account_token_path)
 		.wrap_err("Fcm authentication failed")?;
 
+	info!("Starting server");
 	api::run_server(settings, Box::new(fcm_auth)).await?;
 
 	Ok(())
