@@ -78,13 +78,9 @@ impl Jitter {
 			// TODO: is this a sane starting frequency?
 			Self::jitter(0.25)
 		} else {
-			// We just confirmed it contains more than 4 elements anyways
-			#[allow(clippy::unwrap_used)]
-			let front = self.past_jitters.peek().unwrap().0;
-
-			let elapsed_since = front.elapsed().as_secs_f64();
-
-			Self::jitter(self.past_jitters.len() as f64 / elapsed_since)
+			self.past_jitters.peek().map_or(self.max_jitter, |f| {
+				Self::jitter(self.past_jitters.len() as f64 / f.0.elapsed().as_secs_f64())
+			})
 		};
 
 		if jitter > self.max_jitter {

@@ -28,6 +28,7 @@ use axum::{
 	routing::{get, post},
 	Extension, Json, Router,
 };
+use color_eyre::{eyre::WrapErr, Report};
 use opentelemetry::KeyValue;
 use tokio::sync::{Mutex, RwLock};
 use tracing::debug;
@@ -106,7 +107,10 @@ const VERSION: &str = match option_env!("VERGEN_GIT_SEMVER") {
 };
 
 /// Sets up and runs the server
-pub async fn run_server(settings: Settings, fcm_sender: Box<dyn FcmSender + Send + Sync>) {
+pub async fn run_server(
+	settings: Settings,
+	fcm_sender: Box<dyn FcmSender + Send + Sync>,
+) -> Result<(), Report> {
 	let jitter = Jitter::new(Duration::from_secs_f64(settings.hedwig.max_jitter_delay));
 	let addr: SocketAddr = (settings.server.bind_address, settings.server.port).into();
 
@@ -125,10 +129,8 @@ pub async fn run_server(settings: Settings, fcm_sender: Box<dyn FcmSender + Send
 		.layer(Extension(Arc::new(metrics)))
 		.layer(metrics_middleware.build());
 
-	// If this fails the address+port can't be listened to right now
-	#[allow(clippy::expect_used)]
 	axum::Server::bind(&addr)
 		.serve(app.into_make_service())
 		.await
-		.expect("Failed to bind address!");
+		.wrap_err("Failed to start api server")
 }
