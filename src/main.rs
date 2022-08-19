@@ -38,9 +38,8 @@ use crate::fcm::FcmSenderImpl;
 #[tokio::main]
 async fn main() -> Result<(), Report> {
 	// Complete failure if config file is missing
-	#[allow(clippy::expect_used)]
 	let settings = settings::Settings::load()
-		.expect("Failed to load config, be sure to put it in config.toml");
+		.wrap_err("Failed to load settings!\nPlease reference config.sample.yaml and then put your config at config.yaml")?;
 
 	let subscriber = FmtSubscriber::builder()
 		.with_max_level(
@@ -54,12 +53,10 @@ async fn main() -> Result<(), Report> {
 
 	info!("{:?}", settings);
 
-	// If fcm authentication fails there's no use continuing
-	#[allow(clippy::expect_used)]
 	let fcm_auth = FcmSenderImpl::new(&settings.hedwig.fcm_service_account_token_path)
-		.expect("Failed to authenticate with fcm");
+		.wrap_err("Fcm authentication failed")?;
 
-	api::run_server(settings, Box::new(fcm_auth)).await;
+	api::run_server(settings, Box::new(fcm_auth)).await?;
 
 	Ok(())
 }
