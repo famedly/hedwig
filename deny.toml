@@ -1,0 +1,59 @@
+[advisories]
+ignore = [
+    # time/chrono problems
+    "RUSTSEC-2020-0159",
+    "RUSTSEC-2020-0071",
+]
+
+
+[licenses]
+unlicensed = "deny"
+allow-osi-fsf-free = "either"
+copyleft = "deny"
+unused-allowed-license = "allow"
+# We want really high confidence when inferring licenses from text
+confidence-threshold = 0.93
+allow = [
+	"MPL-2.0"
+]
+
+deny = [
+	"Unlicense"
+]
+
+exceptions = []
+
+[[licenses.clarify]] # Ring is weird like that
+name = "ring"
+version = "*"
+expression = "MIT AND ISC AND OpenSSL"
+license-files = [
+    { path = "LICENSE", hash = 0xbd0eed23 }
+]
+
+[[licenses.clarify]] # webpki too
+name = "webpki"
+version = "*"
+expression = "ISC"
+license-files= [
+    { path = "LICENSE", hash = 0x001c7e6c }
+]
+
+[[licenses.clarify]] # webpki too
+name = "encoding_rs"
+version = "*"
+expression = "Apache-2.0 AND BSD-3-Clause"
+license-files= [
+    { path = "COPYRIGHT", hash = 0x39f8ad31 }
+]
+
+[bans]
+multiple-versions = "allow" # Don't warn on multiple versions, as it causes thousands of lines out output per job and we don't do anything with the information
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "warn"
+
+[sources.allow-org]
+gitlab = ["famedly"]
+github = ["Famedly"]

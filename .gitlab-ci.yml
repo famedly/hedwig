@@ -28,6 +28,11 @@ cargo-check:
     # Run the script that was in the template, that we overwrote
     - !reference [.cargo_check, script]
 
+cargo-deny:
+  extends: .cargo_deny
+  before_script:
+    - !reference [.cargo_common, before_script]
+
 # Documentation pages generation and deployment to the GitLab UI.
 # Only runs on the main branch.
 pages:

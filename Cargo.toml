@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.56"
 axum = "0.5.6"
-axum-opentelemetry-middleware = { version = "0.1", git = "ssh://git@gitlab.com/famedly/company/backend/libraries/axum-opentelemetry-middleware.git", rev = "5abdddf67604c46e43e613267d2f6076d1adf67c" }
+axum-opentelemetry-middleware = { version = "0.1", git = "ssh://git@gitlab.com/famedly/company/backend/libraries/axum-opentelemetry-middleware.git", rev = "7a7a2f389da86fbd92e5fd5783b9e4018ad7a700" }
 color-eyre = "0.6.1"
 config = "0.13.1"
 firebae-cm = "0.1.0"
