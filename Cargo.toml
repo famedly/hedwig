@@ -11,7 +11,7 @@ axum = "0.5.6"
 axum-opentelemetry-middleware = { version = "0.1", git = "ssh://git@gitlab.com/famedly/company/backend/libraries/axum-opentelemetry-middleware.git", rev = "7a7a2f389da86fbd92e5fd5783b9e4018ad7a700" }
 color-eyre = "0.6.1"
 config = "0.13.1"
-firebae-cm = "0.1.0"
+firebae-cm = { version = "0.2", git = "https://github.com/jakibaki/firebae-cm", rev = "2dc4dfd9d9f1a99cf2949b69de0ca474d5f1e609"}
 gcp_auth = "0.7.3"
 opentelemetry = "0.17.0"
 rand = "0.8.5"
@@ -29,4 +29,4 @@ regex = "1.5.6"
 tower = "0.4.13"
 
 [build-dependencies]
-vergen = "6.0.0" # vergen passes metadata like the version and git commit hash to cargo as a compile-time environment variables
+vergen = "7.4.0" # vergen passes metadata like the version and git commit hash to cargo as a compile-time environment variables
