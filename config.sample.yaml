@@ -1,5 +1,10 @@
 log:
   level: INFO
+  # Remove the file_output block for stdout logging
+  file_output:
+    directory: "./logs-sample"
+    prefix: "hedwig.log"
+    rolling_frequency: "DAILY"
 
 server:
   bind_address: 127.0.0.1

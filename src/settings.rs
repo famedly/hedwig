@@ -21,7 +21,8 @@
 use std::net::IpAddr;
 
 use config::{Config, ConfigError, Environment, File};
-use serde::Deserialize;
+use serde::{de::Error, Deserialize, Deserializer};
+use tracing_appender::rolling::Rotation;
 
 /// Hedwig configuration
 #[derive(Deserialize, Debug, Clone)]
@@ -61,11 +62,43 @@ pub struct Server {
 	pub bind_address: IpAddr,
 }
 
+/// Log file output settings
+#[derive(Debug, Deserialize, Clone)]
+pub struct LogFileOuput {
+	/// Log directory
+	pub directory: String,
+	/// Log prefix
+	pub prefix: String,
+	/// Log file rolling frequency: (MINUTELY, HOURLY, DAILY, NEVER)
+	#[serde(deserialize_with = "rolling_from_str")]
+	pub rolling_frequency: Rotation,
+}
+
 /// Log settings
 #[derive(Debug, Deserialize, Clone)]
 pub struct Log {
 	/// Log level (DEBUG, INFO, ERROR etc.)
 	pub level: String,
+	/// File output options
+	pub file_output: Option<LogFileOuput>,
+}
+
+/// Converts a string into a Rolling frequency
+fn rolling_from_str<'de, D>(deserializer: D) -> Result<Rotation, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	let s: String = Deserialize::deserialize(deserializer)?;
+
+	match s.as_str() {
+		"MINUTELY" => Ok(Rotation::MINUTELY),
+		"HOURLY" => Ok(Rotation::HOURLY),
+		"DAILY" => Ok(Rotation::DAILY),
+		"NEVER" => Ok(Rotation::NEVER),
+		_ => Err(D::Error::custom(
+			"Log rolling frequency must be one of MINUTELY, HOURLY, DAILY, NEVER",
+		)),
+	}
 }
 
 /// Main settings struct
