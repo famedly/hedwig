@@ -1,6 +1,6 @@
 /*
  *   Matrix Hedwig
- *   Copyright (C) 2019, 2020, 2021, 2022 Famedly GmbH
+ *   Copyright (C) 2019, 2020, 2021, 2022& Famedly GmbH
  *
  *   This program is free software: you can redistribute it and/or modify
  *   it under the terms of the GNU Affero General Public License as
@@ -46,8 +46,14 @@ struct FakeSender(mpsc::Sender<MessageBody>);
 #[async_trait]
 impl FcmSender for FakeSender {
 	async fn send(&self, message: MessageBody) -> Result<String, HedwigError> {
+		let should_fail = format!("{:?}", message).contains("fcm_fail_pls");
+
 		self.0.send(message).await.unwrap();
-		Ok("owo".to_owned())
+		if should_fail {
+			Err(firebae_cm::Error::Other("blubb".to_owned(), 12).into())
+		} else {
+			Ok("owo".to_owned())
+		}
 	}
 }
 
@@ -203,6 +209,51 @@ async fn check_prom(
 }
 
 #[tokio::test]
+async fn fcm_faliure() -> Result<(), Box<dyn std::error::Error>> {
+	let (tx, mut _rx) = mpsc::channel(1337);
+	let mut service = setup_server(Box::new(FakeSender(tx))).await;
+
+	let msg = json!({
+		"notification": {
+			"counts": {
+				"unread": 1337_i32
+			},
+			"devices": [get_device("com.famedly.🦊", Platform::IoS)],
+			"room_id": "fcm_fail_pls",
+			"event-id": "uwu",
+			"prio": "high"
+		}
+	});
+	assert_eq!("{\"rejected\":[\"IoS\"]}", run_request(&mut service, msg).await?);
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
+	let (tx, mut _rx) = mpsc::channel(1337);
+	let mut service = setup_server(Box::new(FakeSender(tx))).await;
+
+	let body = "I hate json";
+
+	let mut resp = service
+		.call(
+			http::Request::post("/_matrix/push/v1/notify")
+				.header(CONTENT_TYPE, "application/json")
+				.header(CONTENT_LENGTH, body.as_bytes().len())
+				.body(axum::body::Body::from(body))?,
+		)
+		.await?;
+	let data = resp.body_mut().data().await.unwrap()?;
+
+	assert_eq!(
+		std::str::from_utf8(&data)?,
+		"{\"error\":\"Failed to parse the request body as JSON\",\"errcode\":\"BAD_JSON\"}"
+	);
+	Ok(())
+}
+
+#[tokio::test]
 async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
 	let mut service = setup_server(Box::new(FakeSender(tx))).await;
@@ -228,6 +279,21 @@ async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 	}
 
 	check_prom(&mut service, "tests/normal_operation_prometheus.txt").await?;
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
+	let (tx, mut rx) = mpsc::channel(1337);
+	let mut service = setup_server(Box::new(FakeSender(tx))).await;
+
+	let dev = vec![get_device("com.famedly.🦊", Platform::IoS)];
+
+	for _ in 1..100 {
+		run_request(&mut service, test_message(false, dev.clone())).await?;
+		rx.recv().await.unwrap();
+	}
 
 	Ok(())
 }
