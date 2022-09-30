@@ -28,6 +28,10 @@ cargo-check:
     # Run the script that was in the template, that we overwrote
     - !reference [.cargo_check, script]
 
+# Verify that dependencies have been audited
+cargo-vet:
+  extends: .cargo_vet
+
 # Documentation pages generation and deployment to the GitLab UI.
 # Only runs on the main branch.
 pages:
