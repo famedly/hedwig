@@ -72,10 +72,6 @@ criteria = "safe-to-deploy"
 version = "1.0.73"
 criteria = "safe-to-deploy"
 
-[[exemptions.cfg-if]]
-version = "1.0.0"
-criteria = "safe-to-deploy"
-
 [[exemptions.chrono]]
 version = "0.4.22"
 criteria = "safe-to-deploy"
@@ -154,10 +150,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.fastrand]]
 version = "1.8.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.firebae-cm]]
-version = "0.1.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.foreign-types]]
@@ -682,10 +674,6 @@ criteria = "safe-to-deploy"
 
 [[exemptions.tinyvec]]
 version = "1.6.0"
-criteria = "safe-to-deploy"
-
-[[exemptions.tinyvec_macros]]
-version = "0.1.0"
 criteria = "safe-to-deploy"
 
 [[exemptions.tokio]]
