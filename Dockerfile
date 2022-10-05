@@ -29,7 +29,7 @@ RUN git config --global credential.helper store
 RUN echo $KTRA_CARGO_TOKEN | cargo login --registry=famedly && cargo build --release
 
 FROM debian:bullseye-slim
-RUN apt update && apt install ca-certificates -y
+RUN apt update && apt install ca-certificates curl -y
 RUN mkdir -p /opt/matrix-hedwig
 WORKDIR /opt/matrix-hedwig
 COPY --from=builder /app/target/release/matrix-hedwig /usr/local/bin/matrix-hedwig
