@@ -1,4 +1,4 @@
-FROM registry.gitlab.com/famedly/company/devops/containers/rust:main as builder
+FROM registry.gitlab.com/famedly/infra/containers/rust:main as builder
 ARG CARGO_NET_GIT_FETCH_WITH_CLI=true
 ARG FAMEDLY_CRATES_REGISTRY
 ARG CARGO_HOME

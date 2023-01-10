@@ -1,10 +1,10 @@
 # Include our templates for rust and docker:
 include:
-  - project: 'famedly/company/devops/templates/ci-cd'
+  - project: 'famedly/infra/templates/ci-cd'
     ref: rust-v1
     file:
       - '/rust.yml'
-  - project: 'famedly/company/devops/templates/ci-cd'
+  - project: 'famedly/infra/templates/ci-cd'
     ref: docker-v1
     file:
       - '/docker.yml'
