@@ -51,6 +51,9 @@ pub struct Hedwig {
 	pub fcm_notification_android_channel_id: String,
 	/// Action to trigger on the notification click
 	pub fcm_notification_click_action: String,
+	/// Maximum accepted length for NotificationRequests via push
+	/// Defaults to 15000
+	pub notification_request_body_limit: usize,
 }
 
 /// Push gateway server configuration
@@ -119,6 +122,7 @@ impl Settings {
 			.add_source(File::with_name(filename))
 			.add_source(Environment::with_prefix("push_gw").separator("_"))
 			.set_default("log.level", "INFO")?
+			.set_default("hewdwig.notification_request_max_length", 15000)?
 			.build()?
 			.try_deserialize()
 	}
