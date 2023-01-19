@@ -201,8 +201,8 @@ async fn check_prom(
 		service.call(http::Request::get("/metrics").body(axum::body::Body::empty())?).await?;
 	let data = resp.body_mut().data().await.unwrap()?;
 	let data = std::str::from_utf8(&data)?.to_owned();
-	let re = Regex::new(r"[0-9]\.[0-9]+")?;
-	let data = re.replace_all(&data, "FLOAT");
+	let re = Regex::new(r"} [0-9]\.[0-9]+")?;
+	let data = re.replace_all(&data, "} FLOAT");
 
 	assert_eq!(data, std::fs::read_to_string(filename)?);
 	Ok(())
