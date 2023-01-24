@@ -53,7 +53,7 @@ pub struct Hedwig {
 	pub fcm_notification_click_action: String,
 	/// Maximum accepted length for NotificationRequests via push
 	/// Defaults to 15000
-	pub notification_request_body_limit: usize,
+	pub notification_request_body_limit: u64,
 }
 
 /// Push gateway server configuration
@@ -116,13 +116,16 @@ pub struct Settings {
 }
 
 impl Settings {
+	pub const DEFAULT_BODY_LIMIT: u64 = 15000;
+	pub const DEFAULT_LOG_LEVEL: &str = "INFO";
+
 	/// Load settings from file
 	pub fn load(filename: &str) -> Result<Self, ConfigError> {
 		Config::builder()
 			.add_source(File::with_name(filename))
 			.add_source(Environment::with_prefix("push_gw").separator("_"))
-			.set_default("log.level", "INFO")?
-			.set_default("hewdwig.notification_request_max_length", 15000)?
+			.set_default("log.level", Self::DEFAULT_LOG_LEVEL)?
+			.set_default("hewdwig.notification_request_max_length", Self::DEFAULT_BODY_LIMIT)?
 			.build()?
 			.try_deserialize()
 	}

@@ -25,6 +25,9 @@ use axum::{body::Body, Router};
 use color_eyre::Report;
 use firebae_cm::MessageBody;
 use futures::future::poll_fn;
+use http::{
+	header::{CONTENT_LENGTH, CONTENT_TYPE},
+	StatusCode,
 };
 use matrix_hedwig::{
 	api::{create_router, AppState},
@@ -72,7 +75,7 @@ async fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Ro
 			fcm_notification_tag: "org.matrix.default_notification".to_owned(),
 			fcm_notification_android_channel_id: "org.matrix.app.message".to_owned(),
 			fcm_notification_click_action: "FLUTTER_NOTIFICATION_CLICK".to_owned(),
-			notification_request_body_limit: 15000,
+			notification_request_body_limit: Settings::DEFAULT_BODY_LIMIT,
 		};
 		Settings { log, server, hedwig }
 	};
@@ -254,6 +257,35 @@ async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 		&data,
 		"{\"error\":\"Failed to parse the request body as JSON\",\"errcode\":\"BAD_JSON\"}"
 	);
+	Ok(())
+}
+
+#[tokio::test]
+async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
+	let (tx, _rx) = mpsc::channel(1337);
+	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
+
+	let body_limit: usize = Settings::DEFAULT_BODY_LIMIT.try_into().unwrap();
+	let too_long_content = format!("com.famedly.{}", "🐉".repeat(body_limit));
+
+	let device = vec![get_device(&too_long_content, Platform::Android)];
+	let too_long_message = test_message(false, device);
+	let body = serde_json::to_string(&too_long_message)?;
+
+	let resp = service
+		.call(
+			http::Request::post("/_matrix/push/v1/notify")
+				.header(CONTENT_TYPE, "application/json")
+				.header(CONTENT_LENGTH, body.as_bytes().len())
+				.body(axum::body::Body::from(body))?,
+		)
+		.await?;
+
+	assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+	let data = response_to_string(resp).await?;
+	assert_eq!(&data, "{\"error\":\"Failed to buffer the request body\",\"errcode\":\"BAD_JSON\"}");
+
 	Ok(())
 }
 
