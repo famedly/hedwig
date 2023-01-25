@@ -216,7 +216,7 @@ async fn check_prom(
 }
 
 #[tokio::test]
-async fn fcm_faliure() -> Result<(), Box<dyn std::error::Error>> {
+async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut _rx) = mpsc::channel(1337);
 	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
 

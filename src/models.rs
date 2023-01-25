@@ -178,11 +178,11 @@ where
 	type Rejection = HedwigError;
 
 	async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
-		let Json(notifcation_request) = Json::<NotificationRequest>::from_request(req, state)
+		let Json(notification_request) = Json::<NotificationRequest>::from_request(req, state)
 			.await
 			.map_err(|err| HedwigError { error: err.to_string(), errcode: ErrCode::BadJson })?;
 
-		Ok(notifcation_request.notification)
+		Ok(notification_request.notification)
 	}
 }
 

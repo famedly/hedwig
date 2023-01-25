@@ -108,7 +108,7 @@ pub async fn matrix_push(
 
 	// If we pushed anything successfully it counts towards the jitter frequency
 	if rejected.len() < notification.devices.len() {
-		debug!("Sent off at least one notification sucessfully, adjusting jitter accordingly");
+		debug!("Sent off at least one notification successfully, adjusting jitter accordingly");
 		jitter.write().await.push_successful_jitter(start);
 	}
 

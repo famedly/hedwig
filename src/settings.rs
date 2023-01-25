@@ -67,7 +67,7 @@ pub struct Server {
 
 /// Log file output settings
 #[derive(Debug, Deserialize, Clone)]
-pub struct LogFileOuput {
+pub struct LogFileOutput {
 	/// Log directory
 	pub directory: String,
 	/// Log prefix
@@ -83,7 +83,7 @@ pub struct Log {
 	/// Log level (DEBUG, INFO, ERROR etc.)
 	pub level: String,
 	/// File output options
-	pub file_output: Option<LogFileOuput>,
+	pub file_output: Option<LogFileOutput>,
 }
 
 /// Converts a string into a Rolling frequency
