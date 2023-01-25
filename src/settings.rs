@@ -105,6 +105,9 @@ where
 }
 
 /// Main settings struct
+///
+/// The default constants usually get overwritten by the defaults set in
+/// "config.sample.yaml"
 #[derive(Debug, Deserialize)]
 pub struct Settings {
 	/// Log settings
@@ -116,7 +119,9 @@ pub struct Settings {
 }
 
 impl Settings {
-	pub const DEFAULT_BODY_LIMIT: u64 = 15000;
+	/// Default length limit for the matrix push notifications
+	pub const DEFAULT_NOTIFICATION_REQUEST_BODY_LIMIT: u64 = 15000;
+	/// Hedwig default log level
 	pub const DEFAULT_LOG_LEVEL: &str = "INFO";
 
 	/// Load settings from file
@@ -125,7 +130,10 @@ impl Settings {
 			.add_source(File::with_name(filename))
 			.add_source(Environment::with_prefix("push_gw").separator("_"))
 			.set_default("log.level", Self::DEFAULT_LOG_LEVEL)?
-			.set_default("hewdwig.notification_request_max_length", Self::DEFAULT_BODY_LIMIT)?
+			.set_default(
+				"hewdwig.notification_request_max_length",
+				Self::DEFAULT_NOTIFICATION_REQUEST_BODY_LIMIT,
+			)?
 			.build()?
 			.try_deserialize()
 	}

@@ -121,15 +121,23 @@ const VERSION: &str = match option_env!("VERGEN_GIT_SEMVER") {
 	None => env!("CARGO_PKG_VERSION"),
 };
 
-#[derive(Clone, FromRef)]
+/// Struct holding shared state, settings and interfaces for the Hedwig router
+#[derive(Clone, FromRef, Debug)]
 pub struct AppState {
-	jitter: Arc<RwLock<Jitter>>,
+	/// [FcmSender] for communication with Firebase
+	/// Usually [crate::fcm::FcmSenderImpl]
 	fcm_sender: Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>,
+	/// Hedwig [Settings]
 	settings: Arc<Settings>,
+	/// See [Jitter]
+	jitter: Arc<RwLock<Jitter>>,
+	/// Prometheus [Metrics]
 	counters: Arc<Metrics>,
 }
 
 impl AppState {
+	/// Bundle state into [AppState]
+	#[must_use]
 	pub fn new(
 		jitter: Jitter,
 		fcm_sender: Box<dyn FcmSender + Send + Sync>,
@@ -145,6 +153,12 @@ impl AppState {
 	}
 }
 
+/// Create main Hedwig router.
+///
+/// # Errors
+///
+/// This function will return [std::num::TryFromIntError] if the body limit is
+/// larger than the target architectures usize range(This should never happen)
 pub fn create_router(
 	app_state: AppState,
 	metrics_middleware: RecorderMiddleware,

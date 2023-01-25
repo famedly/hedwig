@@ -19,7 +19,7 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::fmt;
+use std::{fmt, fmt::Debug};
 
 use async_trait::async_trait;
 use firebae_cm::{Message, MessageBody};
@@ -30,7 +30,7 @@ use crate::error::HedwigError;
 /// Trait for allowing the use of different senders for fcm messages
 /// Mainly this way to make testing possible
 #[async_trait]
-pub trait FcmSender {
+pub trait FcmSender: Debug {
 	/// Send off a message to fcm
 	async fn send(&self, message: MessageBody) -> Result<String, HedwigError>;
 }
@@ -43,7 +43,7 @@ pub struct FcmSenderImpl {
 	project_id: String,
 }
 
-impl fmt::Debug for FcmSenderImpl {
+impl Debug for FcmSenderImpl {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		f.debug_struct("FcmSenderImpl").field("project_id", &self.project_id).finish()
 	}
