@@ -191,12 +191,7 @@ pub async fn run_server(
 		axum_opentelemetry_middleware::RecorderMiddlewareBuilder::new("Hedwig");
 	let metrics = Metrics::new(&metrics_middleware.meter);
 
-	let app_state = AppState {
-		jitter: Arc::new(RwLock::new(jitter)),
-		fcm_sender: Arc::new(Mutex::new(fcm_sender)),
-		settings: Arc::new(settings),
-		counters: Arc::new(metrics),
-	};
+	let app_state = AppState::new(jitter, fcm_sender, settings, metrics);
 
 	let router = create_router(app_state, metrics_middleware.build())?;
 
