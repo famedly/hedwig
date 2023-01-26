@@ -29,6 +29,7 @@ use axum::{
 	routing::{get, post},
 	Json, Router,
 };
+use axum_extra::routing::RouterExt;
 use axum_opentelemetry_middleware::RecorderMiddleware;
 use color_eyre::{eyre::WrapErr, Report};
 use opentelemetry::{Context, KeyValue};
@@ -170,7 +171,8 @@ pub fn create_router(
 
 	let router = Router::new()
 		.route("/metrics", get(axum_opentelemetry_middleware::metrics_endpoint))
-		.route("/_matrix/push/v1/notify", post(matrix_push).layer(notification_body_limit))
+		// Also takes trailing slash to avoid potential incompabilities
+		.route_with_tsr("/_matrix/push/v1/notify", post(matrix_push).layer(notification_body_limit))
 		.route("/health", get(|| async { "" }))
 		.route("/version", get(|| async { VERSION }))
 		.with_state(app_state)
