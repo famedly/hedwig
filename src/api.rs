@@ -165,7 +165,7 @@ pub fn create_router(
 ) -> Result<Router, Report> {
 	let settings = app_state.settings.clone();
 
-	let usized_limit: usize = settings.hedwig.notification_request_body_limit.try_into()?;
+	let usized_limit: usize = settings.hedwig.notification_request_body_size_limit.try_into()?;
 	let notification_body_limit = DefaultBodyLimit::max(usized_limit);
 
 	let router = Router::new()

@@ -22,4 +22,4 @@ hedwig:
   fcm_notification_icon: "notifications_icon"
   fcm_notification_tag: "org.matrix.default_notification"
   fcm_notification_android_channel_id: "org.matrix.app.message"
-  notification_request_body_limit: 15000
+  notification_request_body_size_limit: 15000

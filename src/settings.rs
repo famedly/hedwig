@@ -52,8 +52,9 @@ pub struct Hedwig {
 	/// Action to trigger on the notification click
 	pub fcm_notification_click_action: String,
 	/// Maximum accepted length for NotificationRequests via push
-	/// Defaults to 15000
-	pub notification_request_body_limit: u64,
+	///
+	/// Defaults to [Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT]
+	pub notification_request_body_size_limit: u64,
 }
 
 /// Push gateway server configuration
@@ -120,7 +121,7 @@ pub struct Settings {
 
 impl Settings {
 	/// Default length limit for the matrix push notifications
-	pub const DEFAULT_NOTIFICATION_REQUEST_BODY_LIMIT: u64 = 15000;
+	pub const DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT: u64 = 15000;
 	/// Hedwig default log level
 	pub const DEFAULT_LOG_LEVEL: &str = "INFO";
 
@@ -131,8 +132,8 @@ impl Settings {
 			.add_source(Environment::with_prefix("push_gw").separator("_"))
 			.set_default("log.level", Self::DEFAULT_LOG_LEVEL)?
 			.set_default(
-				"hewdwig.notification_request_max_length",
-				Self::DEFAULT_NOTIFICATION_REQUEST_BODY_LIMIT,
+				"hedwig.notification_request_body_size_limit",
+				Self::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
 			)?
 			.build()?
 			.try_deserialize()
