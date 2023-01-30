@@ -21,12 +21,8 @@
 use std::collections::HashMap;
 
 use async_trait::async_trait;
-use axum::{
-	body::Body,
-	extract::{ContentLengthLimit, FromRequest, RequestParts},
-	Json,
-};
-use opentelemetry::metrics::{Counter, Meter, ValueRecorder};
+use axum::{body::Body, extract::FromRequest, http::Request, Json};
+use opentelemetry::metrics::{Counter, Histogram, Meter};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{ErrCode, HedwigError};
@@ -175,18 +171,18 @@ impl Notification {
 }
 
 #[async_trait]
-impl FromRequest<Body> for Notification {
+impl<S> FromRequest<S, Body> for Notification
+where
+	S: Send + Sync,
+{
 	type Rejection = HedwigError;
 
-	async fn from_request(req: &mut RequestParts<Body>) -> Result<Self, Self::Rejection> {
-		// TODO: 15000 was chosen rather arbitrarily
-		let notification = req
-			.extract::<ContentLengthLimit<Json<NotificationRequest>, 15000>>()
+	async fn from_request(req: Request<Body>, state: &S) -> Result<Self, Self::Rejection> {
+		let Json(notification_request) = Json::<NotificationRequest>::from_request(req, state)
 			.await
 			.map_err(|err| HedwigError { error: err.to_string(), errcode: ErrCode::BadJson })?;
-		let notification = notification.notification.clone();
 
-		Ok(notification)
+		Ok(notification_request.notification)
 	}
 }
 
@@ -254,7 +250,7 @@ pub struct Metrics {
 	/// Counter for failed pushes categorised by device type
 	pub failed_pushes: Counter<u64>,
 	/// Histogram of rolled jitter values
-	pub jitter: ValueRecorder<f64>,
+	pub jitter: Histogram<f64>,
 }
 
 impl Metrics {
@@ -270,10 +266,7 @@ impl Metrics {
 				.u64_counter("pushes.failed")
 				.with_description("Failed pushes")
 				.init(),
-			jitter: meter
-				.f64_value_recorder("jitter")
-				.with_description("Rolled jitter delays")
-				.init(),
+			jitter: meter.f64_histogram("jitter").with_description("Rolled jitter delays").init(),
 		}
 	}
 }

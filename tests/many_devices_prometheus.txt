@@ -1,8 +1,8 @@
 # HELP http_requests_duration_seconds http.requests.duration.seconds
 # TYPE http_requests_duration_seconds histogram
-http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="FLOAT"} 2
-http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="FLOAT"} 2
-http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="FLOAT"} 2
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="0.1"} 2
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="1"} 2
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="5"} 2
 http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="+Inf"} 3
 http_requests_duration_seconds_sum{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200"} FLOAT
 http_requests_duration_seconds_count{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200"} 3
@@ -11,9 +11,9 @@ http_requests_duration_seconds_count{endpoint="/_matrix/push/v1/notify",method="
 http_requests_total{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200"} 3
 # HELP jitter Rolled jitter delays
 # TYPE jitter histogram
-jitter_bucket{service_name="Hedwig",le="FLOAT"} 3
-jitter_bucket{service_name="Hedwig",le="FLOAT"} 3
-jitter_bucket{service_name="Hedwig",le="FLOAT"} 3
+jitter_bucket{service_name="Hedwig",le="0.1"} 3
+jitter_bucket{service_name="Hedwig",le="1"} 3
+jitter_bucket{service_name="Hedwig",le="5"} 3
 jitter_bucket{service_name="Hedwig",le="+Inf"} 3
 jitter_sum{service_name="Hedwig"} 0
 jitter_count{service_name="Hedwig"} 3
