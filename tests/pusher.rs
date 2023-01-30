@@ -47,7 +47,7 @@ struct FakeSender(mpsc::Sender<MessageBody>);
 #[async_trait]
 impl FcmSender for FakeSender {
 	async fn send(&self, message: MessageBody) -> Result<String, HedwigError> {
-		let should_fail = format!("{:?}", message).contains("fcm_fail_pls");
+		let should_fail = format!("{message:?}").contains("fcm_fail_pls");
 
 		self.0.send(message).await.unwrap();
 		if should_fail {
@@ -141,7 +141,7 @@ fn get_device(app_id: &str, platform: Platform) -> serde_json::Value {
 	json!({
 		"app_id": app_id,
 		"data": data,
-		"pushkey": format!("{:?}", platform),
+		"pushkey": format!("{platform:?}"),
 		"pushkey_ts": 1_655_896_032_i32
 	})
 }
