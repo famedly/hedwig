@@ -18,19 +18,19 @@
 
 #![allow(clippy::unwrap_used)]
 
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 
 use async_trait::async_trait;
-use axum::{
-	body::{Body, HttpBody},
-	routing::{get, post},
-	Extension, Router,
-};
+use axum::{body::Body, Router};
+use color_eyre::Report;
 use firebae_cm::MessageBody;
 use futures::future::poll_fn;
-use http::header::{CONTENT_LENGTH, CONTENT_TYPE};
+use http::{
+	header::{CONTENT_LENGTH, CONTENT_TYPE},
+	StatusCode,
+};
 use matrix_hedwig::{
-	api::matrix_push,
+	api::{create_router, AppState},
 	error::HedwigError,
 	fcm::FcmSender,
 	jitter::Jitter,
@@ -39,14 +39,15 @@ use matrix_hedwig::{
 };
 use regex::Regex;
 use serde_json::json;
-use tokio::sync::{mpsc, Mutex, RwLock};
+use tokio::sync::mpsc;
 use tower::Service;
 
+#[derive(Debug)]
 struct FakeSender(mpsc::Sender<MessageBody>);
 #[async_trait]
 impl FcmSender for FakeSender {
 	async fn send(&self, message: MessageBody) -> Result<String, HedwigError> {
-		let should_fail = format!("{:?}", message).contains("fcm_fail_pls");
+		let should_fail = format!("{message:?}").contains("fcm_fail_pls");
 
 		self.0.send(message).await.unwrap();
 		if should_fail {
@@ -57,7 +58,7 @@ impl FcmSender for FakeSender {
 	}
 }
 
-async fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Router<Body> {
+async fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, Report> {
 	let settings = {
 		let log = settings::Log { file_output: None, level: "DEBUG".to_owned() };
 
@@ -75,6 +76,8 @@ async fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Router<Bo
 			fcm_notification_tag: "org.matrix.default_notification".to_owned(),
 			fcm_notification_android_channel_id: "org.matrix.app.message".to_owned(),
 			fcm_notification_click_action: "FLUTTER_NOTIFICATION_CLICK".to_owned(),
+			notification_request_body_size_limit:
+				Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
 		};
 		Settings { log, server, hedwig }
 	};
@@ -84,18 +87,13 @@ async fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Router<Bo
 		axum_opentelemetry_middleware::RecorderMiddlewareBuilder::new("Hedwig");
 	let counters = models::Metrics::new(&metrics_middleware.meter);
 
-	let mut service = Router::new()
-		.route("/metrics", get(axum_opentelemetry_middleware::metrics_endpoint))
-		.route("/_matrix/push/v1/notify", post(matrix_push))
-		.layer(Extension(Arc::new(RwLock::new(jitter))))
-		.layer(Extension(Arc::new(Mutex::new(fcm_sender))))
-		.layer(Extension(Arc::new(settings)))
-		.layer(Extension(Arc::new(counters)))
-		.layer(metrics_middleware.build());
+	let app_state = AppState::new(jitter, fcm_sender, settings, counters);
 
-	poll_fn(|cx| service.poll_ready(cx)).await.unwrap();
+	let mut router = create_router(app_state, metrics_middleware.build())?;
 
-	service
+	poll_fn(|cx| router.poll_ready(cx)).await.unwrap();
+
+	Ok(router)
 }
 
 #[derive(Debug)]
@@ -143,7 +141,7 @@ fn get_device(app_id: &str, platform: Platform) -> serde_json::Value {
 	json!({
 		"app_id": app_id,
 		"data": data,
-		"pushkey": format!("{:?}", platform),
+		"pushkey": format!("{platform:?}"),
 		"pushkey_ts": 1_655_896_032_i32
 	})
 }
@@ -174,13 +172,25 @@ fn test_message(clearing: bool, devices: Vec<serde_json::Value>) -> serde_json::
 	}
 }
 
+/// Extracts Axum response into string.
+///
+/// Fails if Response is invalid, or the contained data is not an UTF8 String.
+async fn response_to_string(
+	response: axum::response::Response,
+) -> Result<String, Box<dyn std::error::Error>> {
+	let body_data = hyper::body::to_bytes(response.into_body()).await?;
+	let string = std::str::from_utf8(&body_data)?.to_owned();
+
+	Ok(string)
+}
+
 async fn run_request(
-	service: &mut Router<Body>,
+	service: &mut Router<(), Body>,
 	body: serde_json::Value,
 ) -> Result<String, Box<dyn std::error::Error>> {
 	let body = serde_json::to_string(&body)?;
 
-	let mut resp = service
+	let resp = service
 		.call(
 			http::Request::post("/_matrix/push/v1/notify")
 				.header(CONTENT_TYPE, "application/json")
@@ -188,30 +198,29 @@ async fn run_request(
 				.body(axum::body::Body::from(body))?,
 		)
 		.await?;
-	let data = resp.body_mut().data().await.unwrap()?;
 
-	Ok(std::str::from_utf8(&data)?.to_owned())
+	response_to_string(resp).await
 }
 
 async fn check_prom(
-	service: &mut Router<Body>,
+	service: &mut Router<(), Body>,
 	filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-	let mut resp =
+	let resp =
 		service.call(http::Request::get("/metrics").body(axum::body::Body::empty())?).await?;
-	let data = resp.body_mut().data().await.unwrap()?;
-	let data = std::str::from_utf8(&data)?.to_owned();
-	let re = Regex::new(r"[0-9]\.[0-9]+")?;
-	let data = re.replace_all(&data, "FLOAT");
+	let data = response_to_string(resp).await?;
+
+	let re = Regex::new(r"} [0-9]\.[0-9]+")?;
+	let data = re.replace_all(&data, "} FLOAT");
 
 	assert_eq!(data, std::fs::read_to_string(filename)?);
 	Ok(())
 }
 
 #[tokio::test]
-async fn fcm_faliure() -> Result<(), Box<dyn std::error::Error>> {
+async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx))).await;
+	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
 
 	let msg = json!({
 		"notification": {
@@ -232,11 +241,11 @@ async fn fcm_faliure() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx))).await;
+	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
 
 	let body = "I hate json";
 
-	let mut resp = service
+	let resp = service
 		.call(
 			http::Request::post("/_matrix/push/v1/notify")
 				.header(CONTENT_TYPE, "application/json")
@@ -244,19 +253,49 @@ async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 				.body(axum::body::Body::from(body))?,
 		)
 		.await?;
-	let data = resp.body_mut().data().await.unwrap()?;
+	let data = response_to_string(resp).await?;
 
 	assert_eq!(
-		std::str::from_utf8(&data)?,
+		&data,
 		"{\"error\":\"Failed to parse the request body as JSON\",\"errcode\":\"BAD_JSON\"}"
 	);
 	Ok(())
 }
 
 #[tokio::test]
+async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
+	let (tx, _rx) = mpsc::channel(1337);
+	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
+
+	let body_limit: usize =
+		Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT.try_into().unwrap();
+	let too_long_content = format!("com.famedly.{}", "🐉".repeat(body_limit));
+
+	let device = vec![get_device(&too_long_content, Platform::Android)];
+	let too_long_message = test_message(false, device);
+	let body = serde_json::to_string(&too_long_message)?;
+
+	let resp = service
+		.call(
+			http::Request::post("/_matrix/push/v1/notify")
+				.header(CONTENT_TYPE, "application/json")
+				.header(CONTENT_LENGTH, body.as_bytes().len())
+				.body(axum::body::Body::from(body))?,
+		)
+		.await?;
+
+	assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
+
+	let data = response_to_string(resp).await?;
+	assert_eq!(&data, "{\"error\":\"Failed to buffer the request body\",\"errcode\":\"BAD_JSON\"}");
+
+	Ok(())
+}
+
+#[tokio::test]
 async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx))).await;
+	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
 
 	for (clearing, platform, filename) in [
 		(true, Platform::Android, "tests/message_android_clearing.json"),
@@ -286,7 +325,7 @@ async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx))).await;
+	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
 
 	let dev = vec![get_device("com.famedly.🦊", Platform::IoS)];
 
@@ -301,7 +340,7 @@ async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx))).await;
+	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
 
 	// Success
 	for clearing in [true, false] {

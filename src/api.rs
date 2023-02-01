@@ -25,30 +25,35 @@ use std::{
 };
 
 use axum::{
+	extract::{DefaultBodyLimit, FromRef, State},
 	routing::{get, post},
-	Extension, Json, Router,
+	Json, Router,
 };
+use axum_extra::routing::RouterExt;
+use axum_opentelemetry_middleware::RecorderMiddleware;
 use color_eyre::{eyre::WrapErr, Report};
-use opentelemetry::KeyValue;
+use opentelemetry::{Context, KeyValue};
 use tokio::sync::{Mutex, RwLock};
 use tracing::{debug, info};
 
 use crate::{
 	fcm::FcmSender,
 	jitter::Jitter,
-	models::{self, PushGatewayResponse},
+	models::{Metrics, Notification, PushGatewayResponse},
 	pusher,
 	settings::Settings,
 };
 
 /// Endpoint for matrix push
 pub async fn matrix_push(
-	notification: models::Notification,
-	Extension(jitter): Extension<Arc<RwLock<Jitter>>>,
-	Extension(fcm_sender): Extension<Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>>,
-	Extension(settings): Extension<Arc<Settings>>,
-	Extension(counters): Extension<Arc<models::Metrics>>,
+	State(jitter): State<Arc<RwLock<Jitter>>>,
+	State(fcm_sender): State<Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>>,
+	State(settings): State<Arc<Settings>>,
+	State(counters): State<Arc<Metrics>>,
+	notification: Notification,
 ) -> Json<PushGatewayResponse> {
+	let cx = Context::current();
+
 	let mut rejected: Vec<String> = Vec::new();
 
 	let start = Instant::now();
@@ -56,7 +61,7 @@ pub async fn matrix_push(
 	// TODO: as it stands, this way of implementing jitter will result in messages
 	// arriving out of order especially on lower traffic hedwig instances!
 	let jitter_roll = jitter.read().await.get_jitter_delay();
-	counters.jitter.record(jitter_roll.as_secs_f64(), &[]);
+	counters.jitter.record(&cx, jitter_roll.as_secs_f64(), &[]);
 	tokio::time::sleep(jitter_roll).await;
 
 	debug!("Got notification to be pushed to {} devices.", notification.devices.len());
@@ -79,9 +84,11 @@ pub async fn matrix_push(
 						"A push failed (device type: {}), even after retrying: {}",
 						device_type, e
 					);
-					counters
-						.failed_pushes
-						.add(1, &[KeyValue::new("device_type", device_type.clone())]);
+					counters.failed_pushes.add(
+						&cx,
+						1,
+						&[KeyValue::new("device_type", device_type.clone())],
+					);
 					rejected.push(dev.pushkey.clone());
 					break;
 				}
@@ -90,9 +97,11 @@ pub async fn matrix_push(
 				tokio::time::sleep(retry_time).await;
 				retry_time *= 2;
 			} else {
-				counters
-					.successful_pushes
-					.add(1, &[KeyValue::new("device_type", device_type.clone())]);
+				counters.successful_pushes.add(
+					&cx,
+					1,
+					&[KeyValue::new("device_type", device_type.clone())],
+				);
 				break;
 			}
 		}
@@ -100,7 +109,7 @@ pub async fn matrix_push(
 
 	// If we pushed anything successfully it counts towards the jitter frequency
 	if rejected.len() < notification.devices.len() {
-		debug!("Sent off at least one notification sucessfully, adjusting jitter accordingly");
+		debug!("Sent off at least one notification successfully, adjusting jitter accordingly");
 		jitter.write().await.push_successful_jitter(start);
 	}
 
@@ -113,31 +122,83 @@ const VERSION: &str = match option_env!("VERGEN_GIT_SEMVER") {
 	None => env!("CARGO_PKG_VERSION"),
 };
 
+/// Struct holding shared state, settings and interfaces for the Hedwig router
+#[derive(Clone, FromRef, Debug)]
+pub struct AppState {
+	/// [FcmSender] for communication with Firebase
+	/// Usually [crate::fcm::FcmSenderImpl]
+	fcm_sender: Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>,
+	/// Hedwig [Settings]
+	settings: Arc<Settings>,
+	/// See [Jitter]
+	jitter: Arc<RwLock<Jitter>>,
+	/// Prometheus [Metrics]
+	counters: Arc<Metrics>,
+}
+
+impl AppState {
+	/// Bundle state into [AppState]
+	#[must_use]
+	pub fn new(
+		jitter: Jitter,
+		fcm_sender: Box<dyn FcmSender + Send + Sync>,
+		settings: Settings,
+		counters: Metrics,
+	) -> Self {
+		AppState {
+			jitter: Arc::new(RwLock::new(jitter)),
+			fcm_sender: Arc::new(Mutex::new(fcm_sender)),
+			settings: Arc::new(settings),
+			counters: Arc::new(counters),
+		}
+	}
+}
+
+/// Create main Hedwig router.
+///
+/// # Errors
+///
+/// This function will return [std::num::TryFromIntError] if the body limit is
+/// larger than the target architectures usize range(This should never happen)
+pub fn create_router(
+	app_state: AppState,
+	metrics_middleware: RecorderMiddleware,
+) -> Result<Router, Report> {
+	let settings = app_state.settings.clone();
+
+	let usized_limit: usize = settings.hedwig.notification_request_body_size_limit.try_into()?;
+	let notification_body_limit = DefaultBodyLimit::max(usized_limit);
+
+	let router = Router::new()
+		.route("/metrics", get(axum_opentelemetry_middleware::metrics_endpoint))
+		// Also takes trailing slash to avoid potential incompabilities
+		.route_with_tsr("/_matrix/push/v1/notify", post(matrix_push).layer(notification_body_limit))
+		.route("/health", get(|| async { "" }))
+		.route("/version", get(|| async { VERSION }))
+		.with_state(app_state)
+		.layer(metrics_middleware);
+
+	Ok(router)
+}
+
 /// Sets up and runs the server
 pub async fn run_server(
 	settings: Settings,
 	fcm_sender: Box<dyn FcmSender + Send + Sync>,
 ) -> Result<(), Report> {
-	let jitter = Jitter::new(Duration::from_secs_f64(settings.hedwig.max_jitter_delay));
 	let addr: SocketAddr = (settings.server.bind_address, settings.server.port).into();
 
+	let jitter = Jitter::new(Duration::from_secs_f64(settings.hedwig.max_jitter_delay));
 	let metrics_middleware =
 		axum_opentelemetry_middleware::RecorderMiddlewareBuilder::new("Hedwig");
-	let metrics = models::Metrics::new(&metrics_middleware.meter);
+	let metrics = Metrics::new(&metrics_middleware.meter);
 
-	let app = Router::new()
-		.route("/metrics", get(axum_opentelemetry_middleware::metrics_endpoint))
-		.route("/_matrix/push/v1/notify", post(matrix_push))
-		.route("/health", get(|| async { "" }))
-		.route("/version", get(|| async { VERSION }))
-		.layer(Extension(Arc::new(RwLock::new(jitter))))
-		.layer(Extension(Arc::new(Mutex::new(fcm_sender))))
-		.layer(Extension(Arc::new(settings)))
-		.layer(Extension(Arc::new(metrics)))
-		.layer(metrics_middleware.build());
+	let app_state = AppState::new(jitter, fcm_sender, settings, metrics);
+
+	let router = create_router(app_state, metrics_middleware.build())?;
 
 	axum::Server::bind(&addr)
-		.serve(app.into_make_service())
+		.serve(router.into_make_service())
 		.await
 		.wrap_err("Failed to start api server")
 }

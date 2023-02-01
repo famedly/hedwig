@@ -1,19 +1,20 @@
 [package]
 name = "matrix-hedwig"
-version = "1.5.3"
+version = "1.5.4"
 authors = ["Christian Pauly <c.pauly@famedly.com>", "Kateřina Churanová <k.churanova@famedly.com>", "Emily Dietrich <emilydietrich321@gmail.com>"]
 publish = false
 edition = "2021"
 
 [dependencies]
 async-trait = "0.1.56"
-axum = "0.5.16"
-axum-opentelemetry-middleware = { version = "0.1", git = "ssh://git@gitlab.com/famedly/company/backend/libraries/axum-opentelemetry-middleware.git", rev = "5abdddf67604c46e43e613267d2f6076d1adf67c" }
+axum = { version = "0.6.1", features = ["macros"] }
+axum-extra = "0.4.2"
+axum-opentelemetry-middleware = { version = "0.2", git = "ssh://git@gitlab.com/famedly/company/backend/libraries/axum-opentelemetry-middleware.git", rev = "2a0848ce4aa4498ff279920f6b6c76020362c2b0" }
 color-eyre = "0.6.1"
 config = "0.13.1"
 firebae-cm = "0.1.0"
 gcp_auth = "0.7.3"
-opentelemetry = "0.17.0"
+opentelemetry = "0.18.0"
 rand = "0.8.5"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1.0.137", features = ["derive"] }
@@ -26,6 +27,7 @@ tracing-subscriber = "0.3.11"
 [dev-dependencies]
 futures = "0.3.21"
 http = "0.2.8"
+hyper = "0.14.20"
 regex = "1.5.6"
 tower = "0.4.13"
 

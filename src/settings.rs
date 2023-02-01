@@ -51,6 +51,10 @@ pub struct Hedwig {
 	pub fcm_notification_android_channel_id: String,
 	/// Action to trigger on the notification click
 	pub fcm_notification_click_action: String,
+	/// Maximum accepted length for NotificationRequests via push
+	///
+	/// Defaults to [Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT]
+	pub notification_request_body_size_limit: u64,
 }
 
 /// Push gateway server configuration
@@ -64,7 +68,7 @@ pub struct Server {
 
 /// Log file output settings
 #[derive(Debug, Deserialize, Clone)]
-pub struct LogFileOuput {
+pub struct LogFileOutput {
 	/// Log directory
 	pub directory: String,
 	/// Log prefix
@@ -80,7 +84,7 @@ pub struct Log {
 	/// Log level (DEBUG, INFO, ERROR etc.)
 	pub level: String,
 	/// File output options
-	pub file_output: Option<LogFileOuput>,
+	pub file_output: Option<LogFileOutput>,
 }
 
 /// Converts a string into a Rolling frequency
@@ -102,6 +106,9 @@ where
 }
 
 /// Main settings struct
+///
+/// The default constants usually get overwritten by the defaults set in
+/// "config.sample.yaml"
 #[derive(Debug, Deserialize)]
 pub struct Settings {
 	/// Log settings
@@ -113,12 +120,21 @@ pub struct Settings {
 }
 
 impl Settings {
+	/// Default length limit for the matrix push notifications
+	pub const DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT: u64 = 15000;
+	/// Hedwig default log level
+	pub const DEFAULT_LOG_LEVEL: &str = "INFO";
+
 	/// Load settings from file
 	pub fn load(filename: &str) -> Result<Self, ConfigError> {
 		Config::builder()
 			.add_source(File::with_name(filename))
 			.add_source(Environment::with_prefix("push_gw").separator("_"))
-			.set_default("log.level", "INFO")?
+			.set_default("log.level", Self::DEFAULT_LOG_LEVEL)?
+			.set_default(
+				"hedwig.notification_request_body_size_limit",
+				Self::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
+			)?
 			.build()?
 			.try_deserialize()
 	}
