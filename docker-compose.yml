@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  hedwig:
+    restart: "unless-stopped"
+    image: registry.gitlab.com/famedly/company/backend/services/hedwig:main
+    volumes:
+      - ./config.yaml:/opt/matrix-hedwig/config.yaml
+      - ./fcm-auth.json:/opt/matrix-hedwig/fcm-auth.json
+    ports:
+      - 7022:7022/tcp
