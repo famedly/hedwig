@@ -164,10 +164,10 @@ dependencies = [
 [[package]]
 name = "axum-opentelemetry-middleware"
 version = "0.2.0"
-source = "git+ssh://git@gitlab.com/famedly/company/backend/libraries/axum-opentelemetry-middleware.git?rev=2a0848ce4aa4498ff279920f6b6c76020362c2b0#2a0848ce4aa4498ff279920f6b6c76020362c2b0"
+source = "git+https://gitlab.com/famedly/company/backend/libraries/axum-opentelemetry-middleware.git?rev=2a0848ce4aa4498ff279920f6b6c76020362c2b0#2a0848ce4aa4498ff279920f6b6c76020362c2b0"
 dependencies = [
  "axum",
- "base64",
+ "base64 0.13.0",
  "bytes",
  "futures",
  "opentelemetry",
@@ -198,6 +198,12 @@ name = "base64"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
+
+[[package]]
+name = "base64"
+version = "0.21.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f1e31e207a6b8fb791a38ea3105e6cb541f55e4d029902d3039a4ad07cc4105"
 
 [[package]]
 name = "bitflags"
@@ -596,12 +602,12 @@ dependencies = [
 
 [[package]]
 name = "gcp_auth"
-version = "0.7.3"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "891431a1b61be422262174db9a424dfb8142ee8f6bc0195a71d77e0fde9ed61b"
+checksum = "4ab5724fa45095bf1965ff491e75182818ba13f2a8755b04d484a9ec6408b622"
 dependencies = [
  "async-trait",
- "base64",
+ "base64 0.21.1",
  "dirs-next",
  "hyper",
  "hyper-rustls",
@@ -705,7 +711,7 @@ version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3e372db8e5c0d213e0cd0b9be18be2aca3d44cf2fe30a9d46a65581cd454584"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "bitflags",
  "bytes",
  "headers-core",
@@ -1533,7 +1539,7 @@ version = "0.11.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b75aa69a3f06bbcc66ede33af2af253c6f7a86b1ca0033f60c580a27074fbf92"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "bytes",
  "encoding_rs",
  "futures-core",
@@ -1585,7 +1591,7 @@ version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "88073939a61e5b7680558e6be56b419e208420c2adb92be54921fa6b72283f1a"
 dependencies = [
- "base64",
+ "base64 0.13.0",
  "bitflags",
  "serde",
 ]
@@ -1645,7 +1651,7 @@ version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0864aeff53f8c05aa08d86e5ef839d3dfcf07aeba2db32f12db0ef716e87bd55"
 dependencies = [
- "base64",
+ "base64 0.13.0",
 ]
 
 [[package]]
