@@ -1030,7 +1030,7 @@ checksum = "ed1202b2a6f884ae56f04cff409ab315c5ce26b5e58d7412e484f01fd52f52ef"
 
 [[package]]
 name = "matrix-hedwig"
-version = "1.5.4"
+version = "1.5.5"
 dependencies = [
  "async-trait",
  "axum",
