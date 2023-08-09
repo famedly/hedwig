@@ -1,5 +1,4 @@
 name: "Docker"
-description: "Builds the Hedwig docker image"
 
 on:
   push:
