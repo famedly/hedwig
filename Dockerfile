@@ -26,7 +26,7 @@ COPY . /app
 WORKDIR /app
 RUN echo "https://${GIT_CRATE_INDEX_USER}:${GIT_CRATE_INDEX_PASS}@gitlab.com" >> ~/.git-credentials
 RUN git config --global credential.helper store
-RUN echo $KTRA_CARGO_TOKEN | cargo login --registry=famedly && cargo build --release
+RUN cargo build --release
 
 FROM debian:bullseye-slim
 RUN apt update && apt install ca-certificates curl -y
