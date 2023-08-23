@@ -9,3 +9,6 @@ jobs:
   build:
     uses: famedly/backend-build-workflows/.github/workflows/docker-backend.yml@main
     secrets: inherit
+    with:
+      name: hedwig
+      registry: docker-oss.nexus.famedly.de

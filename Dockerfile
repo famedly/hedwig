@@ -1,17 +1,5 @@
-FROM registry.gitlab.com/famedly/infra/containers/rust:main as builder
+FROM rust:1 as builder
 ARG CARGO_NET_GIT_FETCH_WITH_CLI=true
-ARG FAMEDLY_CRATES_REGISTRY
-ARG CARGO_HOME
-ARG CARGO_REGISTRIES_FAMEDLY_INDEX
-ARG KTRA_CARGO_TOKEN
-ARG KTRA_INDEX_SSH_KEY
-ARG GIT_CRATE_INDEX_USER
-ARG GIT_CRATE_INDEX_PASS
-ARG AWS_ACCESS_KEY_ID
-ARG AWS_SECRET_ACCESS_KEY
-ARG AWS_REGION
-ARG CACHEPOT_BUCKET
-ARG RUSTC_WRAPPER
 ARG CARGO_BUILD_RUSTFLAGS
 ARG CI_SSH_PRIVATE_KEY
 
@@ -24,8 +12,6 @@ RUN echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
 
 COPY . /app
 WORKDIR /app
-RUN echo "https://${GIT_CRATE_INDEX_USER}:${GIT_CRATE_INDEX_PASS}@gitlab.com" >> ~/.git-credentials
-RUN git config --global credential.helper store
 RUN cargo build --release
 
 FROM debian:bullseye-slim
