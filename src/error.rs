@@ -47,7 +47,7 @@ pub struct HedwigError {
 
 impl Display for HedwigError {
 	fn fmt(&self, f: &mut Formatter) -> FmtResult {
-		write!(f, "{}", serde_json::to_string_pretty(self).map_err(|_| std::fmt::Error::default())?)
+		write!(f, "{}", serde_json::to_string_pretty(self).map_err(|_| std::fmt::Error)?)
 	}
 }
 
