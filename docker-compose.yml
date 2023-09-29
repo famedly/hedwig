@@ -3,7 +3,7 @@ version: '3'
 services:
   hedwig:
     restart: "unless-stopped"
-    image: registry.gitlab.com/famedly/company/backend/services/hedwig:main
+    image: docker-oss.nexus.famedly.de/hedwig:main
     volumes:
       - ./config.yaml:/opt/matrix-hedwig/config.yaml
       - ./fcm-auth.json:/opt/matrix-hedwig/fcm-auth.json

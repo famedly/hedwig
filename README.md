@@ -1,15 +1,5 @@
 # Matrix Hedwig
 
-[![pipeline status][badge-pipeline-img]][badge-pipeline-url]
-[![coverage report][badge-coverage-img]][badge-coverage-url]
-
-[badge-coverage-img]: https://gitlab.com/famedly/company/backend/services/hedwig/badges/main/coverage.svg
-[badge-coverage-url]: https://gitlab.com/famedly/company/backend/services/hedwig/-/commits/main
-[badge-pipeline-img]: https://gitlab.com/famedly/company/backend/services/hedwig/badges/main/pipeline.svg
-[badge-pipeline-url]: https://gitlab.com/famedly/company/backend/services/hedwig/-/commits/main
-
-
-
 This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) application. It implements the [Matrix Push Notification API r0.1.1](https://matrix.org/docs/spec/push_gateway/r0.1.1) and supports [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging/) only with iOS and Android being supported. If you need to push to iOS be sure to add the appropriate push key or certificate to your FCM project.
 
 ## Features:
@@ -176,7 +166,7 @@ A few lints are commented out in `lints.toml`. This is because they should not b
 **This project is part of the source code of Famedly.**
 
 We think that software for healthcare should be open source, so we publish most
-parts of our source code at [gitlab.com/famedly](https://gitlab.com/famedly/company).
+parts of our source code at [github.com/famedly](https://github.com/famedly).
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of
 conduct, and the process for submitting pull requests to us.
@@ -206,4 +196,4 @@ the express prior written consent of Famedly GmbH.
 
 For more
 information take a look at [Famedly.com](https://famedly.com) or contact
-us by [info@famedly.com](mailto:info@famedly.com?subject=[GitLab]%20More%20Information%20)
+us by [info@famedly.com](mailto:info@famedly.com?subject=[GitHub]%20More%20Information%20)
