@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.56"
 axum = { version = "0.6.1", features = ["macros"] }
-axum-extra = "0.4.2"
+axum-extra = "0.8.0"
 axum-opentelemetry-middleware = { version = "0.2", git = "https://github.com/famedly/axum-opentelemetry-middleware.git", rev = "2a0848ce4aa4498ff279920f6b6c76020362c2b0" }
 color-eyre = "0.6.1"
 config = "0.13.1"
