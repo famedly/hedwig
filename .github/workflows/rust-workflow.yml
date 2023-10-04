@@ -13,5 +13,10 @@ concurrency:
 
 jobs:
   check:
+    # Workaround for GITHUB_TOKEN being read-only in dependabot PRs, stopping meow-coverage from working
+    permissions:
+      issues: write
+      pull-requests: write
+      contents: read
     uses: famedly/backend-build-workflows/.github/workflows/rust-workflow.yml@main
     secrets: inherit
