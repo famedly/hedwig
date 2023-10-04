@@ -13,5 +13,5 @@ concurrency:
 
 jobs:
   check:
-    uses: famedly/backend-build-workflows/.github/workflows/rust-workflow.yml@main
+    uses: famedly/backend-build-workflows/.github/workflows/rust-workflow.yml@egraven/fix-meow-coverage-dependabot
     secrets: inherit
