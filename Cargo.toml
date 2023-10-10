@@ -12,7 +12,7 @@ axum-extra = "0.8.0"
 axum-opentelemetry-middleware = { version = "0.2", git = "https://github.com/famedly/axum-opentelemetry-middleware.git", rev = "2a0848ce4aa4498ff279920f6b6c76020362c2b0" }
 color-eyre = "0.6.1"
 config = "0.13.1"
-firebae-cm = "0.1.0"
+firebae-cm = "0.4.2"
 gcp_auth = "0.7.6"
 opentelemetry = "0.18.0"
 rand = "0.8.5"
