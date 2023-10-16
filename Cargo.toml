@@ -14,7 +14,7 @@ color-eyre = "0.6.1"
 config = "0.13.1"
 firebae-cm = "0.1.0"
 gcp_auth = "0.7.6"
-opentelemetry = "0.18.0"
+opentelemetry = "0.20.0"
 rand = "0.8.5"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1.0.188", features = ["derive"] }
