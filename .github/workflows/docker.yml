@@ -11,4 +11,4 @@ jobs:
     secrets: inherit
     with:
       name: hedwig
-      registry: docker-oss.nexus.famedly.de
+      oss: true
