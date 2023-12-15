@@ -123,7 +123,7 @@ impl Settings {
 	/// Default length limit for the matrix push notifications
 	pub const DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT: u64 = 15000;
 	/// Hedwig default log level
-	pub const DEFAULT_LOG_LEVEL: &str = "INFO";
+	pub const DEFAULT_LOG_LEVEL: &'static str = "INFO";
 
 	/// Load settings from file
 	pub fn load(filename: &str) -> Result<Self, ConfigError> {
