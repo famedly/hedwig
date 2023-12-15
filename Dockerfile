@@ -12,7 +12,7 @@ RUN echo "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config
 
 COPY . /app
 WORKDIR /app
-RUN cargo build --release
+RUN cargo auditable build --release
 
 FROM debian:bullseye-slim
 RUN apt update && apt install ca-certificates curl -y
