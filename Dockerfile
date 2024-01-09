@@ -1,4 +1,4 @@
-FROM rust:1 as builder
+FROM ghcr.io/famedly/rust-container:nightly as builder
 ARG CARGO_NET_GIT_FETCH_WITH_CLI=true
 ARG CARGO_BUILD_RUSTFLAGS
 ARG CI_SSH_PRIVATE_KEY
