@@ -159,6 +159,17 @@ A few lints are commented out in `lints.toml`. This is because they should not b
 2. Run `pre-commit autoupdate` to update the pre-commit config to use the newest template
 3. Run `pre-commit install` to install the pre-commit hooks to your local environment
 
+# Healthcheck for Docker container
+The service API implements the `/health` check for the Docker containers.
+
+*IMPORTANT*: In order the Docker container to be able to perform the check, the image MUST provide the `curl` tool. If changing or updating the base image's version, please ensure the `curl` availability!
+
+````BASH
+curl -s http://localhost:7022/health || exit 1
+````
+
+S. [Dockerfile](./Dockerfile) for details.
+
 ---
 
 # Famedly
@@ -176,7 +187,7 @@ file within the repository.
 
 If you compile the open source software that we make available to develop your
 own mobile, desktop or embeddable application, and cause that application to
-connect to our servers for any purposes, you have to aggree to our Terms of
+connect to our servers for any purposes, you have to agree to our Terms of
 Service. In short, if you choose to connect to our servers, certain restrictions
 apply as follows:
 
