@@ -251,6 +251,10 @@ pub struct Metrics {
 	pub failed_pushes: Counter<u64>,
 	/// Histogram of rolled jitter values
 	pub jitter: Histogram<f64>,
+	/// Counter of devices
+	pub devices: Counter<u64>,
+	/// Counter of notifications
+	pub notifications: Counter<u64>,
 }
 
 impl Metrics {
@@ -267,6 +271,8 @@ impl Metrics {
 				.with_description("Failed pushes")
 				.init(),
 			jitter: meter.f64_histogram("jitter").with_description("Rolled jitter delays").init(),
+			devices: meter.u64_counter("devices").init(),
+			notifications: meter.u64_counter("notifications").init(),
 		}
 	}
 }

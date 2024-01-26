@@ -1,29 +1,61 @@
-# HELP http_requests_duration_seconds http.requests.duration.seconds
+# TYPE devices_total counter
+devices_total{otel_scope_name="axum-opentelemetry"} 12
 # TYPE http_requests_duration_seconds histogram
-http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="0.1"} 2
-http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="1"} 2
-http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="5"} 2
-http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200",le="+Inf"} 3
-http_requests_duration_seconds_sum{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200"} FLOAT
-http_requests_duration_seconds_count{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200"} 3
-# HELP http_requests_total http.requests.total
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="0"} 0
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="5"} 2
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="10"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="25"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="50"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="75"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="100"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="250"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="500"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="750"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="1000"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="2500"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="5000"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="7500"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="10000"} 3
+http_requests_duration_seconds_bucket{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry",le="+Inf"} 3
+http_requests_duration_seconds_sum{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry"} FLOAT
+http_requests_duration_seconds_count{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry"} 3
 # TYPE http_requests_total counter
-http_requests_total{endpoint="/_matrix/push/v1/notify",method="POST",service_name="Hedwig",status="200"} 3
+http_requests_total{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry"} 3
 # HELP jitter Rolled jitter delays
 # TYPE jitter histogram
-jitter_bucket{service_name="Hedwig",le="0.1"} 3
-jitter_bucket{service_name="Hedwig",le="1"} 3
-jitter_bucket{service_name="Hedwig",le="5"} 3
-jitter_bucket{service_name="Hedwig",le="+Inf"} 3
-jitter_sum{service_name="Hedwig"} 0
-jitter_count{service_name="Hedwig"} 3
-# HELP pushes_failed Failed pushes
-# TYPE pushes_failed counter
-pushes_failed{device_type="AndroidLegacy",service_name="Hedwig"} 1
-pushes_failed{device_type="None",service_name="Hedwig"} 1
-# HELP pushes_successful Successful pushes
-# TYPE pushes_successful counter
-pushes_successful{device_type="Android",service_name="Hedwig"} 3
-pushes_successful{device_type="AndroidLegacy",service_name="Hedwig"} 2
-pushes_successful{device_type="Ios",service_name="Hedwig"} 3
-pushes_successful{device_type="None",service_name="Hedwig"} 2
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="0"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="5"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="10"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="25"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="50"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="75"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="100"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="250"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="500"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="750"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="1000"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="2500"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="5000"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="7500"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="10000"} 3
+jitter_bucket{otel_scope_name="axum-opentelemetry",le="+Inf"} 3
+jitter_sum{otel_scope_name="axum-opentelemetry"} 0
+jitter_count{otel_scope_name="axum-opentelemetry"} 3
+# TYPE notifications_total counter
+notifications_total{otel_scope_name="axum-opentelemetry"} 3
+# HELP otel_scope_info Instrumentation Scope metadata
+# TYPE otel_scope_info gauge
+otel_scope_info{otel_scope_name="axum-opentelemetry"} 1
+# HELP pushes_failed_total Failed pushes
+# TYPE pushes_failed_total counter
+pushes_failed_total{device_type="AndroidLegacy",otel_scope_name="axum-opentelemetry"} 1
+pushes_failed_total{device_type="None",otel_scope_name="axum-opentelemetry"} 1
+# HELP pushes_successful_total Successful pushes
+# TYPE pushes_successful_total counter
+pushes_successful_total{device_type="Android",otel_scope_name="axum-opentelemetry"} 3
+pushes_successful_total{device_type="AndroidLegacy",otel_scope_name="axum-opentelemetry"} 2
+pushes_successful_total{device_type="Ios",otel_scope_name="axum-opentelemetry"} 3
+pushes_successful_total{device_type="None",otel_scope_name="axum-opentelemetry"} 2
+# HELP target_info Target metadata
+# TYPE target_info gauge
+target_info{service_name="Hedwig"} 1

@@ -7,14 +7,16 @@ edition = "2021"
 
 [dependencies]
 async-trait = "0.1.73"
-axum = { version = "0.6.1", features = ["macros"] }
+axum = { version = "0.6.20", features = ["macros"] }
 axum-extra = "0.8.0"
-axum-opentelemetry-middleware = { version = "0.2", git = "https://github.com/famedly/axum-opentelemetry-middleware.git", rev = "2a0848ce4aa4498ff279920f6b6c76020362c2b0" }
+axum-opentelemetry-middleware = { version = "0.2.1", git = "https://github.com/famedly/axum-opentelemetry-middleware.git", rev = "f8da4a9642fcc2a5671e4f2eaa5831b94c62464f" }
 color-eyre = "0.6.1"
 config = "0.13.1"
 firebae-cm = "0.1.0"
 gcp_auth = "0.7.6"
-opentelemetry = "0.18.0"
+opentelemetry = { version = "0.21.0", features = ["metrics"] }
+opentelemetry_sdk = { version = "0.21.1", features = ["metrics", "rt-tokio"] }
+opentelemetry-prometheus = "0.14.1"
 rand = "0.8.5"
 reqwest = { version = "0.11", features = ["json"] }
 serde = { version = "1.0.188", features = ["derive"] }
