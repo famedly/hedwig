@@ -1,6 +1,6 @@
 [package]
 name = "matrix-hedwig"
-version = "1.5.5"
+version = "1.6.0"
 authors = ["Christian Pauly <c.pauly@famedly.com>", "Kateřina Churanová <k.churanova@famedly.com>", "Emily Dietrich <emilydietrich321@gmail.com>"]
 publish = false
 edition = "2021"
