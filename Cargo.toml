@@ -13,7 +13,7 @@ axum-opentelemetry-middleware = { version = "0.2.1", git = "https://github.com/f
 color-eyre = "0.6.1"
 config = "0.13.1"
 firebae-cm = "0.1.0"
-gcp_auth = "0.7.6"
+gcp_auth = "0.11.0"
 opentelemetry = { version = "0.21.0", features = ["metrics"] }
 opentelemetry_sdk = { version = "0.21.1", features = ["metrics", "rt-tokio"] }
 opentelemetry-prometheus = "0.14.1"
