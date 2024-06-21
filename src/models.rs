@@ -22,7 +22,7 @@ use std::collections::HashMap;
 
 use async_trait::async_trait;
 use axum::{body::Body, extract::FromRequest, http::Request, Json};
-use opentelemetry::metrics::{Counter, Histogram, Meter};
+use opentelemetry::metrics::{Counter, Meter};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{ErrCode, HedwigError};
@@ -249,8 +249,6 @@ pub struct Metrics {
 	pub successful_pushes: Counter<u64>,
 	/// Counter for failed pushes categorised by device type
 	pub failed_pushes: Counter<u64>,
-	/// Histogram of rolled jitter values
-	pub jitter: Histogram<f64>,
 	/// Counter of devices
 	pub devices: Counter<u64>,
 	/// Counter of notifications
@@ -270,7 +268,6 @@ impl Metrics {
 				.u64_counter("pushes.failed")
 				.with_description("Failed pushes")
 				.init(),
-			jitter: meter.f64_histogram("jitter").with_description("Rolled jitter delays").init(),
 			devices: meter.u64_counter("devices").init(),
 			notifications: meter.u64_counter("notifications").init(),
 		}

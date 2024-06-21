@@ -18,11 +18,7 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::{
-	net::SocketAddr,
-	sync::Arc,
-	time::{Duration, Instant},
-};
+use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::{
 	extract::{DefaultBodyLimit, FromRef, State},
@@ -33,12 +29,11 @@ use axum_extra::routing::RouterExt;
 use axum_opentelemetry_middleware::RecorderMiddleware;
 use color_eyre::{eyre::WrapErr, Report};
 use opentelemetry::KeyValue;
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::Mutex;
 use tracing::{debug, info};
 
 use crate::{
 	fcm::FcmSender,
-	jitter::Jitter,
 	models::{Metrics, Notification, PushGatewayResponse},
 	pusher,
 	settings::Settings,
@@ -46,21 +41,12 @@ use crate::{
 
 /// Endpoint for matrix push
 pub async fn matrix_push(
-	State(jitter): State<Arc<RwLock<Jitter>>>,
 	State(fcm_sender): State<Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>>,
 	State(settings): State<Arc<Settings>>,
 	State(counters): State<Arc<Metrics>>,
 	notification: Notification,
 ) -> Json<PushGatewayResponse> {
 	let mut rejected: Vec<String> = Vec::new();
-
-	let start = Instant::now();
-
-	// TODO: as it stands, this way of implementing jitter will result in messages
-	// arriving out of order especially on lower traffic hedwig instances!
-	let jitter_roll = jitter.read().await.get_jitter_delay();
-	counters.jitter.record(jitter_roll.as_secs_f64(), &[]);
-	tokio::time::sleep(jitter_roll).await;
 
 	debug!("Got notification to be pushed to {} devices.", notification.devices.len());
 	for dev in &notification.devices {
@@ -101,11 +87,7 @@ pub async fn matrix_push(
 		}
 	}
 
-	// If we pushed anything successfully it counts towards the jitter frequency
 	if rejected.len() < notification.devices.len() {
-		debug!("Sent off at least one notification successfully, adjusting jitter accordingly");
-		jitter.write().await.push_successful_jitter(start);
-
 		counters.notifications.add(
 			1,
 			[notification.r#type.map(|r#type| KeyValue::new("notification_type", r#type))]
@@ -135,8 +117,6 @@ pub struct AppState {
 	fcm_sender: Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>,
 	/// Hedwig [Settings]
 	settings: Arc<Settings>,
-	/// See [Jitter]
-	jitter: Arc<RwLock<Jitter>>,
 	/// Prometheus [Metrics]
 	counters: Arc<Metrics>,
 }
@@ -145,13 +125,11 @@ impl AppState {
 	/// Bundle state into [AppState]
 	#[must_use]
 	pub fn new(
-		jitter: Jitter,
 		fcm_sender: Box<dyn FcmSender + Send + Sync>,
 		settings: Settings,
 		counters: Metrics,
 	) -> Self {
 		AppState {
-			jitter: Arc::new(RwLock::new(jitter)),
 			fcm_sender: Arc::new(Mutex::new(fcm_sender)),
 			settings: Arc::new(settings),
 			counters: Arc::new(counters),
@@ -193,12 +171,11 @@ pub async fn run_server(
 ) -> Result<(), Report> {
 	let addr: SocketAddr = (settings.server.bind_address, settings.server.port).into();
 
-	let jitter = Jitter::new(Duration::from_secs_f64(settings.hedwig.max_jitter_delay));
 	let metrics_middleware =
 		axum_opentelemetry_middleware::RecorderMiddlewareBuilder::new("Hedwig");
 	let metrics = Metrics::new(&metrics_middleware.meter);
 
-	let app_state = AppState::new(jitter, fcm_sender, settings, metrics);
+	let app_state = AppState::new(fcm_sender, settings, metrics);
 
 	let router = create_router(app_state, metrics_middleware.build())?;
 

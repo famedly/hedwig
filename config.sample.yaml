@@ -12,7 +12,6 @@ server:
 
 hedwig:
   app_id: "org.matrix.awesome_client"
-  max_jitter_delay: 20.0
   fcm_push_max_retries: 5
   fcm_service_account_token_path: "fcm-auth.json"
   fcm_notification_click_action: "FLUTTER_NOTIFICATION_CLICK"

@@ -29,9 +29,6 @@ use tracing_appender::rolling::Rotation;
 pub struct Hedwig {
 	/// Application ID
 	pub app_id: String,
-	/// Maximum amount of jitter that can be introduced to notifications in
-	/// seconds (msc3359), 0 to disable
-	pub max_jitter_delay: f64,
 	/// Maximum amount of attempts hedwig should make
 	pub fcm_push_max_retries: i64,
 	/// FCM Administration key

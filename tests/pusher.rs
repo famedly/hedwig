@@ -18,8 +18,6 @@
 
 #![allow(clippy::unwrap_used)]
 
-use std::time::Duration;
-
 use async_trait::async_trait;
 use axum::{body::Body, Router};
 use color_eyre::Report;
@@ -33,7 +31,6 @@ use matrix_hedwig::{
 	api::{create_router, AppState},
 	error::HedwigError,
 	fcm::FcmSender,
-	jitter::Jitter,
 	models,
 	settings::{self, Settings},
 };
@@ -66,7 +63,6 @@ async fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Ro
 
 		let hedwig = settings::Hedwig {
 			app_id: "com.famedly.🦊".to_owned(),
-			max_jitter_delay: 2.0,
 			fcm_push_max_retries: 4,
 			fcm_service_account_token_path: "placeholder".to_owned(),
 			fcm_notification_title: "🦊 <count> 🦊".to_owned(),
@@ -82,12 +78,11 @@ async fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Ro
 		Settings { log, server, hedwig }
 	};
 
-	let jitter = Jitter::new(Duration::from_secs_f64(0.0));
 	let metrics_middleware =
 		axum_opentelemetry_middleware::RecorderMiddlewareBuilder::new("Hedwig");
 	let counters = models::Metrics::new(&metrics_middleware.meter);
 
-	let app_state = AppState::new(jitter, fcm_sender, settings, counters);
+	let app_state = AppState::new(fcm_sender, settings, counters);
 
 	let mut router = create_router(app_state, metrics_middleware.build())?;
 

@@ -21,26 +21,6 @@ http_requests_duration_seconds_sum{endpoint="/_matrix/push/v1/notify",method="PO
 http_requests_duration_seconds_count{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry"} 8
 # TYPE http_requests_total counter
 http_requests_total{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry"} 8
-# HELP jitter Rolled jitter delays
-# TYPE jitter histogram
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="0"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="5"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="10"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="25"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="50"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="75"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="100"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="250"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="500"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="750"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="1000"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="2500"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="5000"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="7500"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="10000"} 8
-jitter_bucket{otel_scope_name="axum-opentelemetry",le="+Inf"} 8
-jitter_sum{otel_scope_name="axum-opentelemetry"} 0
-jitter_count{otel_scope_name="axum-opentelemetry"} 8
 # TYPE notifications_total counter
 notifications_total{otel_scope_name="axum-opentelemetry"} 8
 # HELP otel_scope_info Instrumentation Scope metadata

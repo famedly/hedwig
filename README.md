@@ -23,10 +23,6 @@ The `fcm_push_max_retries` setting specifies how many attempts at pushing a noti
 
 To output to stdout instead of files, remove the `file_output` section from the `config.yaml` file.
 
-There is partial support for the proposed delayed push MSC which is defined [here](https://github.com/matrix-org/matrix-spec-proposals/pull/3359), a maximum jitter delay can be specified with the `max_jitter_delay` setting. Set to 0.0 to disable the jitter completely.
-
-In low traffic situations it might be advisable to disable jitter as it can lead to messages being sent out of order.
-
 ### On app side:
 
 Example valid pusher set request (to homeserver, the homeserver will then talk to hedwig whenever there is a notification):  

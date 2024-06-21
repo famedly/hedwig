@@ -22,7 +22,6 @@
 mod api;
 mod error;
 mod fcm;
-mod jitter;
 mod models;
 mod pusher;
 mod settings;
