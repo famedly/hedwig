@@ -14,7 +14,7 @@ COPY . /app
 WORKDIR /app
 RUN cargo auditable build --release
 
-FROM debian:bullseye-slim
+FROM debian:bookworm-slim
 
 RUN apt-get update -qq -o Acquire::Languages=none && \
     env DEBIAN_FRONTEND=noninteractive apt-get install \
