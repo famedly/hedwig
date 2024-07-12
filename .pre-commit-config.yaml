@@ -13,11 +13,11 @@ repos:
     -   id: mixed-line-ending
     -   id: trailing-whitespace
 -   repo: git@github.com:famedly/backend-pre-commit-templates.git
-    rev: main
+    rev: 548bf6ae934623c72e2e5f90e095b45259b6f4ba
     hooks:
     -   id: fmt
     -   id: clippy
 -   repo: https://github.com/crate-ci/typos
-    rev: v1.16.3
+    rev: typos-v0.10.26
     hooks:
     -   id: typos
