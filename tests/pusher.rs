@@ -201,8 +201,7 @@ async fn check_prom(
 	service: &mut Router<(), Body>,
 	filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-	let resp =
-		service.call(http::Request::get("/metrics").body(Body::empty())?).await?;
+	let resp = service.call(http::Request::get("/metrics").body(Body::empty())?).await?;
 	let data = response_to_string(resp).await?;
 
 	let re = Regex::new(r"} [0-9]\.[0-9]+")?;
