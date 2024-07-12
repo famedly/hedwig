@@ -190,7 +190,7 @@ async fn run_request(
 			http::Request::post("/_matrix/push/v1/notify")
 				.header(CONTENT_TYPE, "application/json")
 				.header(CONTENT_LENGTH, body.as_bytes().len())
-				.body(axum::body::Body::from(body))?,
+				.body(Body::from(body))?,
 		)
 		.await?;
 
@@ -202,7 +202,7 @@ async fn check_prom(
 	filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	let resp =
-		service.call(http::Request::get("/metrics").body(axum::body::Body::empty())?).await?;
+		service.call(http::Request::get("/metrics").body(Body::empty())?).await?;
 	let data = response_to_string(resp).await?;
 
 	let re = Regex::new(r"} [0-9]\.[0-9]+")?;
@@ -245,7 +245,7 @@ async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 			http::Request::post("/_matrix/push/v1/notify")
 				.header(CONTENT_TYPE, "application/json")
 				.header(CONTENT_LENGTH, body.as_bytes().len())
-				.body(axum::body::Body::from(body))?,
+				.body(Body::from(body))?,
 		)
 		.await?;
 	let data = response_to_string(resp).await?;
@@ -275,7 +275,7 @@ async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 			http::Request::post("/_matrix/push/v1/notify")
 				.header(CONTENT_TYPE, "application/json")
 				.header(CONTENT_LENGTH, body.as_bytes().len())
-				.body(axum::body::Body::from(body))?,
+				.body(Body::from(body))?,
 		)
 		.await?;
 
