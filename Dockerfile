@@ -1,4 +1,4 @@
-FROM ghcr.io/famedly/rust-container:nightly as builder
+FROM docker-oss.nexus.famedly.de/rust-container:nightly AS builder
 ARG CARGO_NET_GIT_FETCH_WITH_CLI=true
 ARG CARGO_BUILD_RUSTFLAGS
 ARG CI_SSH_PRIVATE_KEY
@@ -19,15 +19,16 @@ FROM debian:bookworm-slim
 RUN apt-get update -qq -o Acquire::Languages=none && \
     env DEBIAN_FRONTEND=noninteractive apt-get install \
     -yqq \
-# install...
-        ca-certificates \
-        tzdata \
-        curl && \
-# clean up...
+    # install...
+    ca-certificates \
+    tzdata \
+    libssl-dev \
+    curl && \
+    # clean up...
     rm -rf /var/lib/apt/lists/* && \
-# create working directory
+    # create working directory
     mkdir -p /opt/matrix-hedwig && \
-# ensure the UTC timezone is set
+    # ensure the UTC timezone is set
     ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime
 
 WORKDIR /opt/matrix-hedwig
@@ -38,5 +39,4 @@ ENV TZ=Etc/UTC
 ARG service_port_number=7022
 EXPOSE ${service_port_number}/tcp
 ENV SERVICE_PORT=${service_port_number}
-HEALTHCHECK --interval=3s --timeout=3s --retries=2 --start-period=5s \
- CMD curl -fSs http://localhost:$SERVICE_PORT/health || exit 1
+HEALTHCHECK --interval=3s --timeout=3s --retries=2 --start-period=5s CMD curl -fSs http://localhost:$SERVICE_PORT/health || exit 1

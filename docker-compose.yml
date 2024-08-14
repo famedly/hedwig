@@ -3,9 +3,10 @@ version: '3'
 services:
   hedwig:
     restart: "unless-stopped"
-    image: docker-oss.nexus.famedly.de/hedwig:main
+    image: docker-oss.nexus.famedly.de/hedwig
+    build: .
+    env_file: "config.properties"
     volumes:
-      - ./config.yaml:/opt/matrix-hedwig/config.yaml
       - ./fcm-auth.json:/opt/matrix-hedwig/fcm-auth.json
     ports:
       - 7022:7022/tcp
