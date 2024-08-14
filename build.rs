@@ -1,11 +1,13 @@
 //! Add build information.
 #![allow(clippy::expect_used)]
 
-use vergen::{vergen, Config, SemverKind, ShaKind};
+use vergen_gitcl::{BuildBuilder, CargoBuilder, Emitter, GitclBuilder, RustcBuilder};
 
-fn main() {
-	let mut cfg = Config::default();
-	*cfg.git_mut().semver_kind_mut() = SemverKind::Lightweight;
-	*cfg.git_mut().sha_kind_mut() = ShaKind::Normal;
-	vergen(cfg).expect("Unable to generate cargo keys!");
+fn main() -> anyhow::Result<()> {
+	Emitter::default()
+		.add_instructions(&BuildBuilder::all_build()?)?
+		.add_instructions(&CargoBuilder::all_cargo()?)?
+		.add_instructions(&RustcBuilder::all_rustc()?)?
+		.add_instructions(&GitclBuilder::all_git()?)?
+		.emit()
 }

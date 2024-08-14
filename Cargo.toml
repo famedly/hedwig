@@ -33,7 +33,13 @@ regex = "1.9.6"
 tower = "0.4.13"
 
 [build-dependencies]
-vergen = "6.0.0" # vergen passes metadata like the version and git commit hash to cargo as a compile-time environment variables
+anyhow = "1.0.86"
+vergen-gitcl = { version = "1.0.0", features = [
+	"cargo",
+	"build",
+	"rustc",
+	"si",
+] } # vergen passes metadata like the version and git commit hash to cargo as a compile-time environment variables
 
 [lints.rust]
 dead_code = "warn"
