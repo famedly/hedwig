@@ -1,7 +1,11 @@
 [package]
 name = "matrix-hedwig"
 version = "2.0.0"
-authors = ["Christian Pauly <c.pauly@famedly.com>", "Kateřina Churanová <k.churanova@famedly.com>", "Emily Dietrich <emilydietrich321@gmail.com>"]
+authors = [
+	"Christian Pauly <c.pauly@famedly.com>",
+	"Kateřina Churanová <k.churanova@famedly.com>",
+	"Emily Dietrich <emilydietrich321@gmail.com>",
+]
 publish = false
 edition = "2021"
 

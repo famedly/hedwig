@@ -40,8 +40,7 @@ use crate::fcm::FcmSenderImpl;
 #[allow(clippy::print_stderr)]
 async fn main() -> Result<(), Report> {
 	// Complete failure if config file is missing
-	let settings = settings::Settings::load("config.yaml")
-		.wrap_err("Failed to load settings!\nPlease reference config.sample.yaml and then put your config at config.yaml")?;
+	let settings = settings::Settings::load(settings::Settings::CONFIG_FILENAME)?;
 
 	let subscriber = FmtSubscriber::builder().with_max_level(
 		tracing::Level::from_str(&settings.log.level).wrap_err("Initializing logging failed")?,

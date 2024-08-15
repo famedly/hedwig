@@ -121,12 +121,14 @@ impl Settings {
 	pub const DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT: u64 = 15000;
 	/// Hedwig default log level
 	pub const DEFAULT_LOG_LEVEL: &'static str = "INFO";
+	/// Config filename
+	pub const CONFIG_FILENAME: &'static str = "config.yml";
 
 	/// Load settings from file
 	pub fn load(filename: &str) -> Result<Self, ConfigError> {
 		Config::builder()
-			.add_source(File::with_name(filename))
-			.add_source(Environment::with_prefix("push_gw").separator("_"))
+			.add_source(File::with_name(filename).required(false))
+			.add_source(Environment::with_prefix("pushgw").prefix_separator("__").separator("__"))
 			.set_default("log.level", Self::DEFAULT_LOG_LEVEL)?
 			.set_default(
 				"hedwig.notification_request_body_size_limit",
