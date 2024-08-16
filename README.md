@@ -18,21 +18,29 @@ This project name aged badly, trans rights are human rights!
 ### Hedwig configuration:
 
 Please reference `config.sample.yaml` for which settings can be set. The configuration file needs to be named `config.yaml`
-The `fcm_service_account_token_path` setting needs to point to an FCM service account token json file.  
+The `fcm_service_account_token_path` setting needs to point to an FCM service account token json file.
 The `fcm_push_max_retries` setting specifies how many attempts at pushing a notification to a device should be made before giving up and reporting the push key as dead.
 
 To output to stdout instead of files, remove the `file_output` section from the `config.yaml` file.
 
+Hedwig can also be configured with environment variables, which is used for the local kubernetes development setup. All variables are namespaced under `PUSHGW`, with a double underscore (`__`) being the separator between the prefix and all keys. As an example, `server.bind_address` would be represented as `PUSHGW__SERVER__BIND_ADDRESS`. See `deploy/config.properties.sample` for an example configuration.
+
+### Kubernetes
+
+Hedwig can be easily deployed to a k8s cluster during development using the provided k8s manifests, `kustomize`, and `tilt`. If you have these tools installed, deploying a dev instance is as simple as running `tilt up`. Please see the `Tiltfile` for tilt configuration and the `deploy/` folder for manifests and the `kustomization.yaml`.
+
+To run successfully, you will need a google API service account key for use with FCM. Place your key in the `deploy/` folder and name it `fcm-auth.json`. If you need to adjust the location or name of the key, please ensure your changes are reflected in the manifests and `kustomization.yaml`.
+
 ### On app side:
 
-Example valid pusher set request (to homeserver, the homeserver will then talk to hedwig whenever there is a notification):  
+Example valid pusher set request (to homeserver, the homeserver will then talk to hedwig whenever there is a notification):
 * `/_matrix/client/v3/pushers/set`:
-```json 
+```json
 {
   "app_display_name": "Aweseome matrix client!",
 
   // Deprecated: {APP_ID}.data_message is equivalent to setting data-message: "android" in data (keep app_id in hedwig config without the .data_message); This is due to removal, do not rely on it staying around!
-  "app_id": "app.id.from.cfg", 
+  "app_id": "app.id.from.cfg",
   "append": false,
   "data": {
     "format": "event_id_only",
@@ -56,7 +64,7 @@ This will result in an FCM notification being sent to the device with the notifi
    "data":{
       "content":"null",
       "counts":"{\"unread\":1337,\"missed_calls\":null}",
-      "devices":"[{\"app_id\":\"com.famedly.🦊\",\"pushkey\":\"Android\",\"pushkey_ts\":1655896032,\"data\":{\"data_message\":\"android\",\"format\":\"event_id_only\"},\"tweaks\":null}]", 
+      "devices":"[{\"app_id\":\"com.famedly.🦊\",\"pushkey\":\"Android\",\"pushkey_ts\":1655896032,\"data\":{\"data_message\":\"android\",\"format\":\"event_id_only\"},\"tweaks\":null}]",
       "prio":"\"high\"",
       "room_id":"owo"
    },
@@ -132,22 +140,9 @@ This will result in an FCM notification being sent to the device with the notifi
 }
 ```
 
+## Lints & Formatting
 
-## Lints
-
-We have plenty of lints in `lints.toml` that we use. Cargo currently does not natively support an extra file for lints, so we use `cargo-lints`. To check everything with our lints, run this locally:
-
-```sh
-cargo lints clippy --workspace --all-targets
-```
-
-and this in your IDE:
-
-```sh
-cargo lints clippy --workspace --all-targets --message-format=json
-```
-
-A few lints are commented out in `lints.toml`. This is because they should not be enabled by default, because e.g. they have false positives. However, they can be very useful sometimes.
+We enforce a set of strict lints across the project, these can be found in `Cargo.toml`. We additionally enforce formatting using rustfmt, see `rustfmt.toml` for information. Please see the #[Pre-commit usage section](#pre-commit-usage) for details on setting up pre-commit hooks to automate checks to ensure the lints and formatting pass prior to pushing.
 
 ## Pre-commit usage
 
