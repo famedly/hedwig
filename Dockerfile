@@ -31,6 +31,7 @@ RUN apt-get update -qq -o Acquire::Languages=none && \
     # ensure the UTC timezone is set
     ln -fs /usr/share/zoneinfo/Etc/UTC /etc/localtime
 
+RUN chmod -R g+rw /opt/matrix-hedwig && chgrp -R 0 /opt/matrix-hedwig
 WORKDIR /opt/matrix-hedwig
 COPY --from=builder /app/target/release/matrix-hedwig /usr/local/bin/matrix-hedwig
 CMD ["/usr/local/bin/matrix-hedwig"]
