@@ -1,3 +1,5 @@
+//! Tests for the settings module.
+
 #![allow(clippy::unwrap_used)]
 
 use matrix_hedwig::settings;

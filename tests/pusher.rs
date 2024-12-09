@@ -15,6 +15,7 @@
  *   You should have received a copy of the GNU Affero General Public License
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
+//! Tests for the pusher.
 
 #![allow(clippy::unwrap_used)]
 
@@ -189,7 +190,7 @@ async fn run_request(
 		.call(
 			http::Request::post("/_matrix/push/v1/notify")
 				.header(CONTENT_TYPE, "application/json")
-				.header(CONTENT_LENGTH, body.as_bytes().len())
+				.header(CONTENT_LENGTH, body.len())
 				.body(Body::from(body))?,
 		)
 		.await?;
@@ -243,7 +244,7 @@ async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 		.call(
 			http::Request::post("/_matrix/push/v1/notify")
 				.header(CONTENT_TYPE, "application/json")
-				.header(CONTENT_LENGTH, body.as_bytes().len())
+				.header(CONTENT_LENGTH, body.len())
 				.body(Body::from(body))?,
 		)
 		.await?;
@@ -273,7 +274,7 @@ async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 		.call(
 			http::Request::post("/_matrix/push/v1/notify")
 				.header(CONTENT_TYPE, "application/json")
-				.header(CONTENT_LENGTH, body.as_bytes().len())
+				.header(CONTENT_LENGTH, body.len())
 				.body(Body::from(body))?,
 		)
 		.await?;
