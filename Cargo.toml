@@ -11,16 +11,16 @@ edition = "2021"
 
 [dependencies]
 async-trait = "0.1.73"
-axum = { version = "0.6.20", features = ["macros"] }
-axum-extra = "0.8.0"
-axum-opentelemetry-middleware = { version = "0.2.1", git = "https://github.com/famedly/axum-opentelemetry-middleware.git", rev = "f8da4a9642fcc2a5671e4f2eaa5831b94c62464f" }
+axum = { version = "0.7.7", features = ["macros"] }
+axum-extra = "0.9.4"
+axum-opentelemetry-middleware = { version = "0.3.0", git = "https://github.com/famedly/axum-opentelemetry-middleware.git", rev = "1c0d87cee1056b4dd620a54eccfde9a9c5e186ec" }
 color-eyre = "0.6.1"
-config = "0.13.1"
-firebae-cm = "0.1.0"
-gcp_auth = "0.7.6"
-opentelemetry = { version = "0.21.0", features = ["metrics"] }
-opentelemetry_sdk = { version = "0.21.1", features = ["metrics", "rt-tokio"] }
-opentelemetry-prometheus = "0.14.1"
+config = "0.14.1"
+firebae-cm = "0.4.2"
+gcp_auth = "0.12.3"
+opentelemetry = { version = "0.24.0", features = ["metrics"] }
+opentelemetry_sdk = { version = "0.24.0", features = ["metrics", "rt-tokio"] }
+opentelemetry-prometheus = "0.17.0"
 rand = "0.8.5"
 serde = { version = "1.0.188", features = ["derive"] }
 serde_json = "1.0.107"
@@ -31,10 +31,10 @@ tracing-subscriber = "0.3.11"
 
 [dev-dependencies]
 futures = "0.3.21"
-http = "0.2.8"
-hyper = "0.14.20"
+http = "1.1.0"
+hyper = "1.5.0"
 regex = "1.9.6"
-tower = "0.4.13"
+tower = "0.5.1"
 
 [build-dependencies]
 anyhow = "1.0.86"

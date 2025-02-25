@@ -29,7 +29,7 @@ use axum_extra::routing::RouterExt;
 use axum_opentelemetry_middleware::RecorderMiddleware;
 use color_eyre::{eyre::WrapErr, Report};
 use opentelemetry::KeyValue;
-use tokio::sync::Mutex;
+use tokio::{net::TcpListener, sync::Mutex};
 use tracing::{debug, info};
 
 use crate::{
@@ -178,9 +178,6 @@ pub async fn run_server(
 	let app_state = AppState::new(fcm_sender, settings, metrics);
 
 	let router = create_router(app_state, metrics_middleware.build())?;
-
-	axum::Server::bind(&addr)
-		.serve(router.into_make_service())
-		.await
-		.wrap_err("Failed to start api server")
+	let listener = TcpListener::bind(&addr).await?;
+	axum::serve(listener, router.into_make_service()).await.wrap_err("Failed to start api server")
 }
