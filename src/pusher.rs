@@ -20,7 +20,8 @@
  */
 
 use firebae_cm::{
-	self, AndroidConfig, AndroidMessagePriority, AndroidNotification, ApnsConfig, MessageBody,
+	self, AndroidConfig, AndroidMessagePriority, AndroidNotification, ApnsConfig, AsFirebaseMap,
+	MessageBody,
 };
 use serde_json::json;
 use tokio::sync::Mutex;
@@ -32,6 +33,13 @@ use crate::{
 	models::{DataMessageType, Device, Notification},
 	settings::Settings,
 };
+
+/// APNS Headers
+#[derive(AsFirebaseMap)]
+struct ApnsHeaders {
+	apns_priority: String,
+	apns_push_type: String,
+}
 
 /// Pushes the FCM notification to the given device
 #[allow(clippy::unused_async)]
@@ -91,7 +99,7 @@ pub async fn push_notification(
 			}));
 
 			// Priority needs to be 5 for the service extension to be used
-			ios_config.headers(json!({"apns-priority": "5"}));
+			ios_config.headers(json!());
 
 			body.apns(ios_config);
 		}

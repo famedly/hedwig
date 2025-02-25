@@ -52,6 +52,14 @@ pub struct Hedwig {
 	///
 	/// Defaults to [Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT]
 	pub notification_request_body_size_limit: u64,
+	/// APNS Priority
+	///
+	/// Defaults to 10
+	pub apns_priority: String,
+	/// APNS Push Type
+	///
+	/// Defaults to "alert"
+	pub apns_push_type: String,
 }
 
 /// Push gateway server configuration
@@ -134,6 +142,8 @@ impl Settings {
 				"hedwig.notification_request_body_size_limit",
 				Self::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
 			)?
+			.set_default("hedwig.apns_priority", "10")?
+			.set_default("hedwig.apns_push_type", "alert")?
 			.build()?
 			.try_deserialize()
 	}
