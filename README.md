@@ -10,9 +10,6 @@ This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) applic
 - Version endpoint at `GET /version`
 - Prometheus metrics at `GET /metrics`
 
-
-This project name aged badly, trans rights are human rights!
-
 ## Getting Started
 
 ### Hedwig configuration:
