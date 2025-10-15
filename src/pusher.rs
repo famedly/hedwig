@@ -91,7 +91,9 @@ pub async fn push_notification(
 			}));
 
 			// Priority needs to be 5 for the service extension to be used
-			ios_config.headers(json!({"apns-priority": "5"}));
+			ios_config.headers(
+				json!({"apns-priority": "5", "apns-push-type": settings.hedwig.fcm_apns_push_type}),
+			);
 
 			body.apns(ios_config);
 		}
@@ -121,7 +123,9 @@ pub async fn push_notification(
 			android_config.priority(AndroidMessagePriority::High);
 
 			let mut ios_config = ApnsConfig::new();
-			ios_config.headers(json!({"apns-priority": "10"}));
+			ios_config.headers(
+				json!({"apns-priority": "10", "apns-push-type": settings.hedwig.fcm_apns_push_type}),
+			);
 			ios_config.payload(json!({
 				"aps": {
 					"badge": count,

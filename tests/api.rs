@@ -54,6 +54,7 @@ fn create_test_settings(port: u16) -> Settings {
 		fcm_notification_click_action: "TEST_CLICK".to_owned(),
 		notification_request_body_size_limit:
 			Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
+		fcm_apns_push_type: "background".to_owned(),
 	};
 	Settings { log, server, hedwig }
 }

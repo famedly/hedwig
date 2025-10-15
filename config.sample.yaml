@@ -21,4 +21,6 @@ hedwig:
   fcm_notification_icon: "notifications_icon"
   fcm_notification_tag: "org.matrix.default_notification"
   fcm_notification_android_channel_id: "org.matrix.app.message"
+  # https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types
+  fcm_apns_push_type: background
   notification_request_body_size_limit: 15000

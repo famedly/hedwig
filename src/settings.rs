@@ -48,6 +48,8 @@ pub struct Hedwig {
 	pub fcm_notification_android_channel_id: String,
 	/// Action to trigger on the notification click
 	pub fcm_notification_click_action: String,
+	/// Type of notification for Apple devices
+	pub fcm_apns_push_type: String,
 	/// Maximum accepted length for NotificationRequests via push
 	///
 	/// Defaults to [Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT]
@@ -122,7 +124,7 @@ impl Settings {
 	/// Hedwig default log level
 	pub const DEFAULT_LOG_LEVEL: &'static str = "INFO";
 	/// Config filename
-	pub const CONFIG_FILENAME: &'static str = "config.yml";
+	pub const CONFIG_FILENAME: &'static str = "config.yaml";
 
 	/// Load settings from file
 	pub fn load(filename: &str) -> Result<Self, ConfigError> {

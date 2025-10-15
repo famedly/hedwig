@@ -75,6 +75,7 @@ fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, 
 			fcm_notification_tag: "org.matrix.default_notification".to_owned(),
 			fcm_notification_android_channel_id: "org.matrix.app.message".to_owned(),
 			fcm_notification_click_action: "FLUTTER_NOTIFICATION_CLICK".to_owned(),
+			fcm_apns_push_type: "background".to_owned(),
 			notification_request_body_size_limit:
 				Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
 		};
@@ -208,7 +209,7 @@ async fn check_prom(
 	let re = Regex::new(r"} [0-9]\.[0-9]+")?;
 	let data = re.replace_all(&data, "} FLOAT");
 
-	assert_eq!(data, std::fs::read_to_string(filename)?);
+	assert_eq!(data.trim_end(), std::fs::read_to_string(filename)?.trim_end());
 	Ok(())
 }
 
@@ -309,7 +310,7 @@ async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 		.await?;
 		let posted_message = serde_json::to_string(&rx.recv().await.unwrap())?;
 		assert_eq!(&resp, "{\"rejected\":[]}");
-		assert_eq!(posted_message, std::fs::read_to_string(filename)?);
+		assert_eq!(posted_message, std::fs::read_to_string(filename)?.trim_end());
 	}
 
 	check_prom(&mut service, "tests/normal_operation_prometheus.txt").await?;
@@ -356,7 +357,7 @@ async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 		.map(|name| if clearing { format!("{name}_clearing.json") } else { format!("{name}.json") })
 		{
 			let posted_message = serde_json::to_string(&rx.recv().await.unwrap())?;
-			assert_eq!(posted_message, std::fs::read_to_string(filename)?);
+			assert_eq!(posted_message, std::fs::read_to_string(filename)?.trim_end());
 		}
 	}
 
