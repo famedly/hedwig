@@ -29,7 +29,7 @@ use axum_opentelemetry_middleware::RecorderMiddleware;
 use color_eyre::{eyre::WrapErr, Report};
 use opentelemetry::KeyValue;
 use tokio::sync::Mutex;
-use tower_http::normalize_path::NormalizePathLayer;
+use tower_http::{catch_panic::CatchPanicLayer, normalize_path::NormalizePathLayer};
 use tracing::{debug, info};
 
 use crate::{
@@ -160,6 +160,7 @@ pub fn create_router(
 		.with_state(app_state)
 		// Also takes trailing slash to avoid potential incompabilities
 		.layer(NormalizePathLayer::trim_trailing_slash())
+		.layer(CatchPanicLayer::new())
 		.layer(metrics_middleware);
 
 	Ok(router)

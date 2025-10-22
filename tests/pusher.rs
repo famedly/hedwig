@@ -373,3 +373,39 @@ async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 
 	Ok(())
 }
+
+#[derive(Debug)]
+struct PanickingSender;
+#[async_trait]
+impl FcmSender for PanickingSender {
+	async fn send(&self, _message: MessageBody) -> Result<String, HedwigError> {
+		panic!("Run for your lives!");
+	}
+}
+
+#[tokio::test]
+async fn panic_handler() -> Result<(), Box<dyn std::error::Error>> {
+	let mut service = setup_server(Box::new(PanickingSender))?;
+
+	let body = serde_json::to_string(&test_message(
+		false,
+		vec![get_device("com.famedly.🦊", Platform::IoS)],
+	))?;
+	let resp = service
+		.call(
+			axum::http::Request::post("/_matrix/push/v1/notify")
+				.header(CONTENT_TYPE, "application/json")
+				.header(CONTENT_LENGTH, body.len())
+				.body(Body::from(body))?,
+		)
+		.await?;
+	let status = resp.status();
+	let response_string = response_to_string(resp).await?;
+	assert_eq!(
+		status,
+		StatusCode::INTERNAL_SERVER_ERROR,
+		"Got incorrect error code: {response_string}"
+	);
+
+	Ok(())
+}
