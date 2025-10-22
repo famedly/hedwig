@@ -20,14 +20,16 @@
 #![allow(clippy::unwrap_used)]
 
 use async_trait::async_trait;
-use axum::{body::Body, Router};
+use axum::{
+	body::Body,
+	http::{
+		header::{CONTENT_LENGTH, CONTENT_TYPE},
+		StatusCode,
+	},
+	Router,
+};
 use color_eyre::Report;
 use firebae_cm::MessageBody;
-use futures::future::poll_fn;
-use http::{
-	header::{CONTENT_LENGTH, CONTENT_TYPE},
-	StatusCode,
-};
 use matrix_hedwig::{
 	api::{create_router, AppState},
 	error::HedwigError,
@@ -56,7 +58,7 @@ impl FcmSender for FakeSender {
 	}
 }
 
-async fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, Report> {
+fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, Report> {
 	let settings = {
 		let log = settings::Log { file_output: None, level: "DEBUG".to_owned() };
 
@@ -85,9 +87,7 @@ async fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Ro
 
 	let app_state = AppState::new(fcm_sender, settings, counters);
 
-	let mut router = create_router(app_state, metrics_middleware.build())?;
-
-	poll_fn(|cx| router.poll_ready(cx)).await.unwrap();
+	let router = create_router(app_state, metrics_middleware.build())?;
 
 	Ok(router)
 }
@@ -174,21 +174,21 @@ fn test_message(clearing: bool, devices: Vec<serde_json::Value>) -> serde_json::
 async fn response_to_string(
 	response: axum::response::Response,
 ) -> Result<String, Box<dyn std::error::Error>> {
-	let body_data = hyper::body::to_bytes(response.into_body()).await?;
+	let body_data = axum::body::to_bytes(response.into_body(), usize::MAX).await?;
 	let string = std::str::from_utf8(&body_data)?.to_owned();
 
 	Ok(string)
 }
 
 async fn run_request(
-	service: &mut Router<(), Body>,
+	service: &mut Router,
 	body: serde_json::Value,
 ) -> Result<String, Box<dyn std::error::Error>> {
 	let body = serde_json::to_string(&body)?;
 
 	let resp = service
 		.call(
-			http::Request::post("/_matrix/push/v1/notify")
+			axum::http::Request::post("/_matrix/push/v1/notify")
 				.header(CONTENT_TYPE, "application/json")
 				.header(CONTENT_LENGTH, body.len())
 				.body(Body::from(body))?,
@@ -199,10 +199,10 @@ async fn run_request(
 }
 
 async fn check_prom(
-	service: &mut Router<(), Body>,
+	service: &mut Router,
 	filename: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
-	let resp = service.call(http::Request::get("/metrics").body(Body::empty())?).await?;
+	let resp = service.call(axum::http::Request::get("/metrics").body(Body::empty())?).await?;
 	let data = response_to_string(resp).await?;
 
 	let re = Regex::new(r"} [0-9]\.[0-9]+")?;
@@ -215,7 +215,7 @@ async fn check_prom(
 #[tokio::test]
 async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
+	let mut service = setup_server(Box::new(FakeSender(tx)))?;
 
 	let msg = json!({
 		"notification": {
@@ -236,13 +236,13 @@ async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
+	let mut service = setup_server(Box::new(FakeSender(tx)))?;
 
 	let body = "I hate json";
 
 	let resp = service
 		.call(
-			http::Request::post("/_matrix/push/v1/notify")
+			axum::http::Request::post("/_matrix/push/v1/notify")
 				.header(CONTENT_TYPE, "application/json")
 				.header(CONTENT_LENGTH, body.len())
 				.body(Body::from(body))?,
@@ -260,7 +260,7 @@ async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
+	let mut service = setup_server(Box::new(FakeSender(tx)))?;
 
 	let body_limit: usize =
 		Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT.try_into().unwrap();
@@ -272,7 +272,7 @@ async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 
 	let resp = service
 		.call(
-			http::Request::post("/_matrix/push/v1/notify")
+			axum::http::Request::post("/_matrix/push/v1/notify")
 				.header(CONTENT_TYPE, "application/json")
 				.header(CONTENT_LENGTH, body.len())
 				.body(Body::from(body))?,
@@ -290,7 +290,7 @@ async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
+	let mut service = setup_server(Box::new(FakeSender(tx)))?;
 
 	for (clearing, platform, filename) in [
 		(true, Platform::Android, "tests/message_android_clearing.json"),
@@ -320,7 +320,7 @@ async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
+	let mut service = setup_server(Box::new(FakeSender(tx)))?;
 
 	let dev = vec![get_device("com.famedly.🦊", Platform::IoS)];
 
@@ -335,7 +335,7 @@ async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx))).await?;
+	let mut service = setup_server(Box::new(FakeSender(tx)))?;
 
 	// Success
 	for clearing in [true, false] {

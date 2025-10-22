@@ -23,9 +23,6 @@ http_requests_duration_seconds_count{endpoint="/_matrix/push/v1/notify",method="
 http_requests_total{endpoint="/_matrix/push/v1/notify",method="POST",status="200",otel_scope_name="axum-opentelemetry"} 8
 # TYPE notifications_total counter
 notifications_total{otel_scope_name="axum-opentelemetry"} 8
-# HELP otel_scope_info Instrumentation Scope metadata
-# TYPE otel_scope_info gauge
-otel_scope_info{otel_scope_name="axum-opentelemetry"} 1
 # HELP pushes_successful_total Successful pushes
 # TYPE pushes_successful_total counter
 pushes_successful_total{device_type="Android",otel_scope_name="axum-opentelemetry"} 2

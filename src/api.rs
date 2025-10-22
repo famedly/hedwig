@@ -25,11 +25,11 @@ use axum::{
 	routing::{get, post},
 	Json, Router,
 };
-use axum_extra::routing::RouterExt;
 use axum_opentelemetry_middleware::RecorderMiddleware;
 use color_eyre::{eyre::WrapErr, Report};
 use opentelemetry::KeyValue;
 use tokio::sync::Mutex;
+use tower_http::normalize_path::NormalizePathLayer;
 use tracing::{debug, info};
 
 use crate::{
@@ -154,11 +154,12 @@ pub fn create_router(
 
 	let router = Router::new()
 		.route("/metrics", get(axum_opentelemetry_middleware::metrics_endpoint))
-		// Also takes trailing slash to avoid potential incompabilities
-		.route_with_tsr("/_matrix/push/v1/notify", post(matrix_push).layer(notification_body_limit))
+		.route("/_matrix/push/v1/notify", post(matrix_push).layer(notification_body_limit))
 		.route("/health", get(|| async { "" }))
 		.route("/version", get(|| async { VERSION }))
 		.with_state(app_state)
+		// Also takes trailing slash to avoid potential incompabilities
+		.layer(NormalizePathLayer::trim_trailing_slash())
 		.layer(metrics_middleware);
 
 	Ok(router)
@@ -179,8 +180,8 @@ pub async fn run_server(
 
 	let router = create_router(app_state, metrics_middleware.build())?;
 
-	axum::Server::bind(&addr)
-		.serve(router.into_make_service())
-		.await
-		.wrap_err("Failed to start api server")
+	let listener =
+		tokio::net::TcpListener::bind(&addr).await.wrap_err("Failed to bind to address")?;
+
+	axum::serve(listener, router).await.wrap_err("Failed to start api server")
 }
