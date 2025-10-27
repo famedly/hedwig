@@ -51,11 +51,13 @@ impl Display for HedwigError {
 	}
 }
 
-impl From<firebae_cm::Error> for HedwigError {
-	fn from(err: firebae_cm::Error) -> Self {
+impl From<google_fcm1::Error> for HedwigError {
+	fn from(err: google_fcm1::Error) -> Self {
 		error!("fcm error: {}", err);
 		Self {
-			error: "Something went wrong while trying to interact with fcm".to_owned(),
+			error: "Something went wrong while trying to interact with
+fcm"
+			.to_owned(),
 			errcode: ErrCode::FcmFailed,
 		}
 	}

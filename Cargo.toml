@@ -15,7 +15,7 @@ axum = { version = "0.7.5", features = ["macros"] }
 axum-opentelemetry-middleware = { version = "0.3.0", git = "https://github.com/famedly/axum-opentelemetry-middleware.git" }
 color-eyre = "0.6.3"
 config = "0.13.4"
-firebae-cm = "0.1.0"
+google-fcm1 = "6.0.0"
 gcp_auth = "0.8.1"
 opentelemetry = { version = "0.24.0", features = ["metrics"] }
 opentelemetry_sdk = { version = "0.24.1", features = ["metrics", "rt-tokio"] }

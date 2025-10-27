@@ -22,8 +22,11 @@
 use std::{fmt, fmt::Debug};
 
 use async_trait::async_trait;
-use firebae_cm::{Message, MessageBody};
 use gcp_auth::{AuthenticationManager, CustomServiceAccount};
+use google_fcm1::{
+	api::SendMessageRequest, hyper_rustls, hyper_util, yup_oauth2, FirebaseCloudMessaging,
+};
+use serde_json::Value;
 
 use crate::error::HedwigError;
 
@@ -32,7 +35,11 @@ use crate::error::HedwigError;
 #[async_trait]
 pub trait FcmSender: Debug {
 	/// Send off a message to fcm
-	async fn send(&self, message: MessageBody) -> Result<String, HedwigError>;
+	async fn send(
+		&self,
+		req: SendMessageRequest,
+		fcm_auth_path: &str,
+	) -> Result<String, HedwigError>;
 }
 
 /// Default implementation for FcmSender
@@ -63,15 +70,39 @@ impl FcmSenderImpl {
 
 #[async_trait]
 impl FcmSender for FcmSenderImpl {
-	async fn send(&self, body: MessageBody) -> Result<String, HedwigError> {
-		let client = firebae_cm::Client::new();
-		let token = self
-			.authentication_manager
-			.get_token(&["https://www.googleapis.com/auth/firebase.messaging"])
-			.await
-			.map(|e| e.as_str().to_owned());
-		let message = Message::new(self.project_id.clone(), token?, body);
+	async fn send(
+		&self,
+		req: SendMessageRequest,
+		fcm_auth_path: &str,
+	) -> Result<String, HedwigError> {
+		let client =
+			hyper_util::client::legacy::Client::builder(hyper_util::rt::TokioExecutor::new())
+				.build(
+					hyper_rustls::HttpsConnectorBuilder::new()
+						.with_native_roots()
+						.unwrap()
+						.https_or_http()
+						.enable_http1()
+						.build(),
+				);
+		let file = std::fs::File::open(fcm_auth_path).unwrap();
+		let mut fcm_auth: Value = serde_json::from_reader(file)?;
+		// yup_oauth2 needs these values even though they're not used
+		fcm_auth["client_secret"] = Value::String("".to_owned());
+		fcm_auth["redirect_uris"] = Value::Array(vec![]);
+		let secret: yup_oauth2::ApplicationSecret = serde_json::from_value(fcm_auth)?;
+		let auth = yup_oauth2::InstalledFlowAuthenticator::builder(
+			secret,
+			yup_oauth2::InstalledFlowReturnMethod::HTTPRedirect,
+		)
+		.build()
+		.await
+		.unwrap();
+		// TODO: make this a global object
+		let hub = FirebaseCloudMessaging::new(client, auth);
 
-		Ok(client.send(message).await?)
+		// Ok(client.send(message).await?)
+		println!("{:?}", hub.projects().messages_send(req, "parent").doit().await?);
+		Ok("".to_string())
 	}
 }
