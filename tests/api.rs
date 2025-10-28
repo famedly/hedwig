@@ -44,7 +44,6 @@ fn create_test_settings(port: u16) -> Settings {
 	let hedwig = settings::Hedwig {
 		app_id: "com.test.app".to_owned(),
 		fcm_push_max_retries: 3,
-		fcm_service_account_token_path: "placeholder".to_owned(),
 		fcm_notification_title: "Test".to_owned(),
 		fcm_notification_body: "Test body".to_owned(),
 		fcm_notification_sound: "default".to_owned(),

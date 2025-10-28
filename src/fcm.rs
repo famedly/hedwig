@@ -19,11 +19,14 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::{fmt, fmt::Debug};
+use std::{
+	fmt::{self, Debug},
+	sync::Arc,
+};
 
 use async_trait::async_trait;
 use firebae_cm::{Message, MessageBody};
-use gcp_auth::{AuthenticationManager, CustomServiceAccount};
+use gcp_auth::TokenProvider;
 
 use crate::error::HedwigError;
 
@@ -38,7 +41,7 @@ pub trait FcmSender: Debug {
 /// Default implementation for FcmSender
 pub struct FcmSenderImpl {
 	/// The authentication manager for refreshing tokens when needed
-	authentication_manager: AuthenticationManager,
+	provider: Arc<dyn TokenProvider>,
 	/// The project id of the fcm project
 	project_id: String,
 }
@@ -51,13 +54,11 @@ impl Debug for FcmSenderImpl {
 
 impl FcmSenderImpl {
 	/// Create new fcm sender from the path to a service-account fcm token
-	pub fn new(fcm_auth_path: &str) -> Result<Self, gcp_auth::Error> {
-		let service_account = CustomServiceAccount::from_file(fcm_auth_path)?;
-		let project_id =
-			service_account.project_id().ok_or(gcp_auth::Error::NoProjectId)?.to_owned();
-		let authentication_manager = AuthenticationManager::from(service_account);
+	pub async fn new() -> Result<Self, gcp_auth::Error> {
+		let provider = gcp_auth::provider().await?;
+		let project_id: String = provider.project_id().await?.to_string();
 
-		Ok(Self { authentication_manager, project_id })
+		Ok(Self { provider, project_id })
 	}
 }
 
@@ -66,8 +67,8 @@ impl FcmSender for FcmSenderImpl {
 	async fn send(&self, body: MessageBody) -> Result<String, HedwigError> {
 		let client = firebae_cm::Client::new();
 		let token = self
-			.authentication_manager
-			.get_token(&["https://www.googleapis.com/auth/firebase.messaging"])
+			.provider
+			.token(&["https://www.googleapis.com/auth/firebase.messaging"])
 			.await
 			.map(|e| e.as_str().to_owned());
 		let message = Message::new(self.project_id.clone(), token?, body);

@@ -20,8 +20,8 @@
 
 use std::collections::HashMap;
 
-use async_trait::async_trait;
 use axum::{body::Body, extract::FromRequest, http::Request, Json};
+use firebae_cm::{FirebaseMap, IntoFirebaseMap};
 use opentelemetry::metrics::{Counter, Meter};
 use serde::{Deserialize, Serialize};
 
@@ -170,7 +170,6 @@ impl Notification {
 	}
 }
 
-#[async_trait]
 impl<S> FromRequest<S, Body> for Notification
 where
 	S: Send + Sync,
@@ -235,6 +234,53 @@ pub struct NotificationData {
 	pub user_is_target: Option<String>,
 }
 
+impl IntoFirebaseMap for NotificationData {
+	fn as_map(&self) -> FirebaseMap {
+		let mut map = FirebaseMap::new();
+		let mut insert_opt = |key: &str, val: &Option<String>| {
+			if let Some(ref v) = val {
+				map.insert(key, v);
+			}
+		};
+
+		insert_opt("event_id", &self.event_id);
+		insert_opt("room_id", &self.room_id);
+		insert_opt("type", &self.r#type);
+		insert_opt("sender", &self.sender);
+		insert_opt("sender_display_name", &self.sender_display_name);
+		insert_opt("room_name", &self.room_name);
+		insert_opt("room_alias", &self.room_alias);
+		insert_opt("ciphertext", &self.ciphertext);
+		insert_opt("ephemeral", &self.ephemeral);
+		insert_opt("mac", &self.mac);
+		insert_opt("user_is_target", &self.user_is_target);
+
+		map.insert("prio", &self.prio);
+		map.insert("counts", &self.counts);
+		map.insert("content", &self.content);
+		map.insert("devices", &self.devices);
+		map
+	}
+}
+
+/// APNS headers
+#[derive(Debug)]
+pub struct ApnsHeaders {
+	/// Priority
+	pub apns_priority: String,
+	/// Push type
+	pub apns_push_type: String,
+}
+
+impl IntoFirebaseMap for ApnsHeaders {
+	fn as_map(&self) -> FirebaseMap {
+		let mut map = FirebaseMap::new();
+		map.insert("apns-priority", &self.apns_priority);
+		map.insert("apns-push-type", &self.apns_push_type);
+		map
+	}
+}
+
 /// Response from the push gateway
 #[derive(Serialize, Debug)]
 pub struct PushGatewayResponse {
@@ -263,13 +309,13 @@ impl Metrics {
 			successful_pushes: meter
 				.u64_counter("pushes.successful")
 				.with_description("Successful pushes")
-				.init(),
+				.build(),
 			failed_pushes: meter
 				.u64_counter("pushes.failed")
 				.with_description("Failed pushes")
-				.init(),
-			devices: meter.u64_counter("devices").init(),
-			notifications: meter.u64_counter("notifications").init(),
+				.build(),
+			devices: meter.u64_counter("devices").build(),
+			notifications: meter.u64_counter("notifications").build(),
 		}
 	}
 }

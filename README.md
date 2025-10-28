@@ -18,8 +18,8 @@ This project name aged badly, trans rights are human rights!
 ### Hedwig configuration:
 
 Please reference `config.sample.yaml` for which settings can be set. The configuration file needs to be named `config.yaml`
-The `fcm_service_account_token_path` setting needs to point to an FCM service account token json file.
 The `fcm_push_max_retries` setting specifies how many attempts at pushing a notification to a device should be made before giving up and reporting the push key as dead.
+Authentication against GCP is done with `gcp_auth`, you need to setup one of the 4 authentication methods listed [here](https://github.com/djc/gcp_auth/blob/5a1e48db47784c9afdbad38a33907cb2e98bbfdd/README.md)
 
 To output to stdout instead of files, remove the `file_output` section from the `config.yaml` file.
 

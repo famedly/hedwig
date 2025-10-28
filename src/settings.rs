@@ -31,8 +31,6 @@ pub struct Hedwig {
 	pub app_id: String,
 	/// Maximum amount of attempts hedwig should make
 	pub fcm_push_max_retries: i64,
-	/// FCM Administration key
-	pub fcm_service_account_token_path: String,
 	/// The text to display in a notification (replaces <count> tag with a
 	/// notification count
 	pub fcm_notification_title: String,

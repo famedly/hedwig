@@ -29,7 +29,7 @@ use tracing::debug;
 use crate::{
 	error::{ErrCode, HedwigError},
 	fcm::FcmSender,
-	models::{DataMessageType, Device, Notification},
+	models::{ApnsHeaders, DataMessageType, Device, Notification},
 	settings::Settings,
 };
 
@@ -83,17 +83,18 @@ pub async fn push_notification(
 
 			let mut ios_config = ApnsConfig::new();
 			ios_config.payload(json!({
-				"aps" : {
-				   "mutable-content" : 1,
-				   "badge": count,
-				   "sound": settings.hedwig.fcm_notification_sound
+				"aps": {
+					"mutable-content": 1,
+					"badge": count,
+					"sound": settings.hedwig.fcm_notification_sound
 				}
-			}));
+			}))?;
 
 			// Priority needs to be 5 for the service extension to be used
-			ios_config.headers(
-				json!({"apns-priority": "5", "apns-push-type": settings.hedwig.fcm_apns_push_type}),
-			);
+			ios_config.headers(ApnsHeaders {
+				apns_priority: "5".to_owned(),
+				apns_push_type: settings.hedwig.fcm_apns_push_type.clone(),
+			})?;
 
 			body.apns(ios_config);
 		}
@@ -123,15 +124,16 @@ pub async fn push_notification(
 			android_config.priority(AndroidMessagePriority::High);
 
 			let mut ios_config = ApnsConfig::new();
-			ios_config.headers(
-				json!({"apns-priority": "10", "apns-push-type": settings.hedwig.fcm_apns_push_type}),
-			);
+			ios_config.headers(ApnsHeaders {
+				apns_priority: "10".to_owned(),
+				apns_push_type: settings.hedwig.fcm_apns_push_type.clone(),
+			})?;
 			ios_config.payload(json!({
 				"aps": {
 					"badge": count,
 					"sound": settings.hedwig.fcm_notification_sound
 				}
-			}));
+			}))?;
 
 			body.android(android_config);
 			body.apns(ios_config);

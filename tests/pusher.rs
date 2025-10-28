@@ -29,7 +29,7 @@ use axum::{
 	Router,
 };
 use color_eyre::Report;
-use firebae_cm::MessageBody;
+use firebae_cm::{FcmError, MessageBody};
 use matrix_hedwig::{
 	api::{create_router, AppState},
 	error::HedwigError,
@@ -51,7 +51,12 @@ impl FcmSender for FakeSender {
 
 		self.0.send(message).await.unwrap();
 		if should_fail {
-			Err(firebae_cm::Error::Other("blubb".to_owned(), 12).into())
+			Err(firebae_cm::Error::FcmError(FcmError {
+				code: 0,
+				status: "Bad Request".to_owned(),
+				message: "blubb".to_owned(),
+			})
+			.into())
 		} else {
 			Ok("owo".to_owned())
 		}
@@ -67,7 +72,6 @@ fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, 
 		let hedwig = settings::Hedwig {
 			app_id: "com.famedly.🦊".to_owned(),
 			fcm_push_max_retries: 4,
-			fcm_service_account_token_path: "placeholder".to_owned(),
 			fcm_notification_title: "🦊 <count> 🦊".to_owned(),
 			fcm_notification_body: "read the notification pls :c".to_owned(),
 			fcm_notification_sound: "default".to_owned(),
@@ -253,7 +257,7 @@ async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 
 	assert_eq!(
 		&data,
-		"{\"error\":\"Failed to parse the request body as JSON\",\"errcode\":\"BAD_JSON\"}"
+		"{\"error\":\"Failed to parse the request body as JSON: expected value at line 1 column 1\",\"errcode\":\"BAD_JSON\"}"
 	);
 	Ok(())
 }
@@ -283,7 +287,7 @@ async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 	assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 
 	let data = response_to_string(resp).await?;
-	assert_eq!(&data, "{\"error\":\"Failed to buffer the request body\",\"errcode\":\"BAD_JSON\"}");
+	assert_eq!(&data, "{\"error\":\"Failed to buffer the request body: length limit exceeded\",\"errcode\":\"BAD_JSON\"}");
 
 	Ok(())
 }

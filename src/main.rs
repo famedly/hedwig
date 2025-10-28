@@ -65,8 +65,7 @@ async fn main() -> Result<(), Report> {
 
 	info!("Launching with settings: {:?}", settings);
 
-	let fcm_auth = FcmSenderImpl::new(&settings.hedwig.fcm_service_account_token_path)
-		.wrap_err("Fcm authentication failed")?;
+	let fcm_auth = FcmSenderImpl::new().await.wrap_err("Fcm authentication failed")?;
 
 	info!("Starting server");
 	api::run_server(settings, Box::new(fcm_auth)).await?;
