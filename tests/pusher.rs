@@ -19,6 +19,8 @@
 
 #![allow(clippy::unwrap_used)]
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 use axum::{
 	body::Body,
@@ -34,10 +36,12 @@ use matrix_hedwig::{
 	api::{create_router, AppState},
 	error::HedwigError,
 	fcm::FcmSender,
-	models,
+	models::Metrics,
 	settings::{self, Settings},
 };
+use opentelemetry::metrics::MeterProvider;
 use regex::Regex;
+use rust_telemetry::config::OtelConfig;
 use serde_json::json;
 use tokio::sync::mpsc;
 use tower::Service;
@@ -65,7 +69,7 @@ impl FcmSender for FakeSender {
 
 fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, Report> {
 	let settings = {
-		let log = settings::Log { file_output: None, level: "DEBUG".to_owned() };
+		let log = settings::Log { level: "DEBUG".to_owned() };
 
 		let server = settings::Server { port: 4567, bind_address: [0, 0, 0, 0].into() };
 
@@ -83,16 +87,20 @@ fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, 
 			notification_request_body_size_limit:
 				Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
 		};
-		Settings { log, server, hedwig }
+		Settings { log, server, hedwig, telemetry: OtelConfig::default() }
 	};
 
-	let metrics_middleware =
-		axum_opentelemetry_middleware::RecorderMiddlewareBuilder::new("Hedwig");
-	let counters = models::Metrics::new(&metrics_middleware.meter);
+	let registry = prometheus::Registry::new();
+	let exporter = opentelemetry_prometheus::exporter().with_registry(registry.clone()).build()?;
 
-	let app_state = AppState::new(fcm_sender, settings, counters);
+	let provider =
+		opentelemetry_sdk::metrics::SdkMeterProvider::builder().with_reader(exporter).build();
+	let meter = provider.meter("Hedwig");
+	let metrics = Metrics::new(&meter);
 
-	let router = create_router(app_state, metrics_middleware.build())?;
+	let app_state = AppState::new(fcm_sender, settings, metrics);
+
+	let router = create_router(app_state, Arc::new(registry))?;
 
 	Ok(router)
 }

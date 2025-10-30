@@ -26,12 +26,8 @@ mod models;
 mod pusher;
 mod settings;
 
-use std::str::FromStr;
-
 use color_eyre::{eyre::WrapErr, Report};
 use tracing::info;
-use tracing_appender::rolling::RollingFileAppender;
-use tracing_subscriber::FmtSubscriber;
 
 use crate::fcm::FcmSenderImpl;
 
@@ -42,26 +38,7 @@ async fn main() -> Result<(), Report> {
 	// Complete failure if config file is missing
 	let settings = settings::Settings::load(settings::Settings::CONFIG_FILENAME)?;
 
-	let subscriber = FmtSubscriber::builder().with_max_level(
-		tracing::Level::from_str(&settings.log.level).wrap_err("Initializing logging failed")?,
-	);
-
-	if let Some(output) = &settings.log.file_output {
-		// Wants file output
-		let file_appender = RollingFileAppender::new(
-			output.rolling_frequency.clone(),
-			&output.directory,
-			&output.prefix,
-		);
-
-		tracing::subscriber::set_global_default(
-			subscriber.with_writer(file_appender).with_ansi(false).finish(),
-		)
-	} else {
-		// No file output
-		tracing::subscriber::set_global_default(subscriber.finish())
-	}
-	.wrap_err("Setting up default subscriber")?;
+	rust_telemetry::init_otel(&settings.telemetry, "Hedwig", "2.0.0", "Hedwig")?;
 
 	info!("Launching with settings: {:?}", settings);
 

@@ -25,12 +25,13 @@ use axum::{
 	routing::{get, post},
 	Json, Router,
 };
-use axum_opentelemetry_middleware::RecorderMiddleware;
+use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
 use color_eyre::{eyre::WrapErr, Report};
-use opentelemetry::KeyValue;
+use opentelemetry::{metrics::MeterProvider, KeyValue};
+use opentelemetry_sdk::metrics::SdkMeterProvider;
 use tokio::sync::Mutex;
 use tower_http::{catch_panic::CatchPanicLayer, normalize_path::NormalizePathLayer};
-use tracing::{debug, info};
+use tracing::{debug, info, instrument};
 
 use crate::{
 	fcm::FcmSender,
@@ -40,6 +41,7 @@ use crate::{
 };
 
 /// Endpoint for matrix push
+#[instrument]
 pub async fn matrix_push(
 	State(fcm_sender): State<Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>>,
 	State(settings): State<Arc<Settings>>,
@@ -137,6 +139,16 @@ impl AppState {
 	}
 }
 
+/// exposes Prometheus metrics
+async fn metrics_handler(State(registry): State<Arc<prometheus::Registry>>) -> String {
+	use prometheus::{Encoder, TextEncoder};
+	let encoder = TextEncoder::new();
+	let metric_families = registry.gather();
+	let mut buffer = Vec::new();
+	encoder.encode(&metric_families, &mut buffer).unwrap_or_default();
+	String::from_utf8(buffer).unwrap_or_default()
+}
+
 /// Create main Hedwig router.
 ///
 /// # Errors
@@ -145,7 +157,7 @@ impl AppState {
 /// larger than the target architectures usize range(This should never happen)
 pub fn create_router(
 	app_state: AppState,
-	metrics_middleware: RecorderMiddleware,
+	registry: Arc<prometheus::Registry>,
 ) -> Result<Router, Report> {
 	let settings = app_state.settings.clone();
 
@@ -153,15 +165,15 @@ pub fn create_router(
 	let notification_body_limit = DefaultBodyLimit::max(usized_limit);
 
 	let router = Router::new()
-		.route("/metrics", get(axum_opentelemetry_middleware::metrics_endpoint))
 		.route("/_matrix/push/v1/notify", post(matrix_push).layer(notification_body_limit))
+		.layer(OtelAxumLayer::default())
+		.route("/metrics", get(metrics_handler).with_state(registry))
 		.route("/health", get(|| async { "" }))
 		.route("/version", get(|| async { VERSION }))
 		.with_state(app_state)
 		// Also takes trailing slash to avoid potential incompabilities
 		.layer(NormalizePathLayer::trim_trailing_slash())
-		.layer(CatchPanicLayer::new())
-		.layer(metrics_middleware);
+		.layer(CatchPanicLayer::new());
 
 	Ok(router)
 }
@@ -173,13 +185,18 @@ pub async fn run_server(
 ) -> Result<(), Report> {
 	let addr: SocketAddr = (settings.server.bind_address, settings.server.port).into();
 
-	let metrics_middleware =
-		axum_opentelemetry_middleware::RecorderMiddlewareBuilder::new("Hedwig");
-	let metrics = Metrics::new(&metrics_middleware.meter);
+	let registry = prometheus::Registry::new();
+	let exporter = opentelemetry_prometheus::exporter().with_registry(registry.clone()).build()?;
+
+	let provider = SdkMeterProvider::builder().with_reader(exporter).build();
+	let meter = provider.meter("Hedwig");
+	let metrics = Metrics::new(&meter);
+
+	opentelemetry::global::set_meter_provider(provider);
 
 	let app_state = AppState::new(fcm_sender, settings, metrics);
 
-	let router = create_router(app_state, metrics_middleware.build())?;
+	let router = create_router(app_state, Arc::new(registry))?;
 
 	let listener =
 		tokio::net::TcpListener::bind(&addr).await.wrap_err("Failed to bind to address")?;

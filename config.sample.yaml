@@ -12,6 +12,7 @@ server:
 
 hedwig:
   app_id: "org.matrix.awesome_client"
+  # specifies how many attempts at pushing a notification to a device should be made before giving up and reporting the push key as dead
   fcm_push_max_retries: 5
   fcm_notification_click_action: "FLUTTER_NOTIFICATION_CLICK"
   fcm_notification_title: "<count> unread rooms"
@@ -23,3 +24,98 @@ hedwig:
   # https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types
   fcm_apns_push_type: background
   notification_request_body_size_limit: 15000
+
+# these are sample configuration options for the telemetry
+# full schema available at: https://github.com/famedly/rust-telemetry/blob/main/config-schema.yaml
+telemetry:
+  stdout:
+    # optional, default: true
+    enabled: true
+
+    # Level for the crate
+    # <off|error|warn|info|debug|trace> optional, default: info
+    level: info
+
+    # Level for the dependencies
+    # <off|error|warn|info|debug|trace> optional, default: info
+    general_level: info
+
+    # Level for the dependencies
+    # <off|error|warn|info|debug|trace> optional, default: empty
+    dependencies_levels:
+      "famedly-rust-utils": debug
+
+    # Output structured JSON logs
+    # optional, default: false
+    json_output: false
+
+  # optional
+  exporter:
+    # gRPC endpoint for exporting using OTELP
+    # optional, default: "http://localhost:4317"
+    endpoint: http://localhost:4317
+
+    # Key value mapping of the OTEL resource.
+    # See https://opentelemetry.io/docs/specs/semconv/resource/
+    # for what can be set here. Only string values are supported now.
+    # This crate sets `service.name` and `service.version` using this config option.
+    # optional
+    resource_metadata:
+      service.instance.id: test-instance
+
+    # Logs exporting config
+    # optional
+    logs:
+      # optional, default: false
+      enabled: false
+
+      # Level for the crate
+      # <off|error|warn|info|debug|trace> optional, default: info
+      level: LevelFilter,
+
+      # Level for the dependencies
+      # <off|error|warn|info|debug|trace> optional, default: info
+      general_level: LevelFilter,
+
+      # Level for the dependencies
+      # <off|error|warn|info|debug|trace> optional, default: empty
+      dependencies_levels:
+        "famedly-rust-utils": debug
+
+    # Traces exporting config
+    # optional
+    traces:
+      # optional, default: false
+      enabled: false
+
+      # Level for the crate
+      # <off|error|warn|info|debug|trace> optional, default: info
+      level: LevelFilter,
+
+      # Level for the dependencies
+      # <off|error|warn|info|debug|trace> optional, default: info
+      general_level: LevelFilter,
+
+      # Level for the dependencies
+      # <off|error|warn|info|debug|trace> optional, default: empty
+      dependencies_levels:
+        "famedly-rust-utils": debug
+
+    # Metrics exporting config
+    # optional
+    metrics:
+      # optional, default: false
+      enabled: false
+
+      # Level for the crate
+      # <off|error|warn|info|debug|trace> optional, default: info
+      level: LevelFilter,
+
+      # Level for the dependencies
+      # <off|error|warn|info|debug|trace> optional, default: info
+      general_level: LevelFilter,
+
+      # Level for the dependencies
+      # <off|error|warn|info|debug|trace> optional, default: empty
+      dependencies_levels:
+        "famedly-rust-utils": debug

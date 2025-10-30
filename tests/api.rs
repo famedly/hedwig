@@ -25,6 +25,7 @@ use matrix_hedwig::{
 	fcm::FcmSender,
 	settings::{self, Settings},
 };
+use rust_telemetry::config::OtelConfig;
 use tokio::time;
 
 #[derive(Debug)]
@@ -37,7 +38,7 @@ impl FcmSender for FakeSender {
 }
 
 fn create_test_settings(port: u16) -> Settings {
-	let log = settings::Log { file_output: None, level: "DEBUG".to_owned() };
+	let log = settings::Log { level: "DEBUG".to_owned() };
 
 	let server = settings::Server { port, bind_address: [127, 0, 0, 1].into() };
 
@@ -55,7 +56,7 @@ fn create_test_settings(port: u16) -> Settings {
 			Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
 		fcm_apns_push_type: "background".to_owned(),
 	};
-	Settings { log, server, hedwig }
+	Settings { log, server, hedwig, telemetry: OtelConfig::default() }
 }
 
 #[tokio::test]

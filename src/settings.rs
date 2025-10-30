@@ -21,8 +21,8 @@
 use std::net::IpAddr;
 
 use config::{Config, ConfigError, Environment, File};
-use serde::{de::Error, Deserialize, Deserializer};
-use tracing_appender::rolling::Rotation;
+use rust_telemetry::config::OtelConfig;
+use serde::Deserialize;
 
 /// Hedwig configuration
 #[derive(Debug, Deserialize)]
@@ -63,43 +63,11 @@ pub struct Server {
 	pub bind_address: IpAddr,
 }
 
-/// Log file output settings
-#[derive(Debug, Deserialize, Clone)]
-pub struct LogFileOutput {
-	/// Log directory
-	pub directory: String,
-	/// Log prefix
-	pub prefix: String,
-	/// Log file rolling frequency: (MINUTELY, HOURLY, DAILY, NEVER)
-	#[serde(deserialize_with = "rolling_from_str")]
-	pub rolling_frequency: Rotation,
-}
-
 /// Log settings
 #[derive(Debug, Deserialize)]
 pub struct Log {
 	/// Log level (DEBUG, INFO, ERROR etc.)
 	pub level: String,
-	/// File output options
-	pub file_output: Option<LogFileOutput>,
-}
-
-/// Converts a string into a Rolling frequency
-fn rolling_from_str<'de, D>(deserializer: D) -> Result<Rotation, D::Error>
-where
-	D: Deserializer<'de>,
-{
-	let s: String = Deserialize::deserialize(deserializer)?;
-
-	match s.as_str() {
-		"MINUTELY" => Ok(Rotation::MINUTELY),
-		"HOURLY" => Ok(Rotation::HOURLY),
-		"DAILY" => Ok(Rotation::DAILY),
-		"NEVER" => Ok(Rotation::NEVER),
-		_ => Err(D::Error::custom(
-			"Log rolling frequency must be one of MINUTELY, HOURLY, DAILY, NEVER",
-		)),
-	}
 }
 
 /// Main settings struct
@@ -114,6 +82,8 @@ pub struct Settings {
 	pub server: Server,
 	/// Hedwig settings
 	pub hedwig: Hedwig,
+	/// rust-telemetry settings
+	pub telemetry: OtelConfig,
 }
 
 impl Settings {
