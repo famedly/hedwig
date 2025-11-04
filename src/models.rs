@@ -22,7 +22,7 @@ use std::collections::HashMap;
 
 use axum::{body::Body, extract::FromRequest, http::Request, Json};
 use firebae_cm::{FirebaseMap, IntoFirebaseMap};
-use opentelemetry::metrics::{Counter, Meter};
+use opentelemetry::metrics::{Counter, Histogram, Meter};
 use serde::{Deserialize, Serialize};
 
 use crate::error::{ErrCode, HedwigError};
@@ -299,6 +299,10 @@ pub struct Metrics {
 	pub devices: Counter<u64>,
 	/// Counter of notifications
 	pub notifications: Counter<u64>,
+	/// Histogram tracking the duration of each HTTP request
+	pub http_requests_duration_seconds: Histogram<f64>,
+	/// Counter tracking the total number of HTTP requests
+	pub http_requests_total: Counter<u64>,
 }
 
 impl Metrics {
@@ -316,6 +320,14 @@ impl Metrics {
 				.build(),
 			devices: meter.u64_counter("devices").build(),
 			notifications: meter.u64_counter("notifications").build(),
+			http_requests_duration_seconds: meter
+				.f64_histogram("http.requests.duration.seconds")
+				.with_description("HTTP request duration in seconds")
+				.build(),
+			http_requests_total: meter
+				.u64_counter("http.requests")
+				.with_description("Total number of HTTP requests")
+				.build(),
 		}
 	}
 }

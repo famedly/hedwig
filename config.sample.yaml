@@ -71,11 +71,11 @@ telemetry:
 
       # Level for the crate
       # <off|error|warn|info|debug|trace> optional, default: info
-      level: LevelFilter,
+      level: info
 
       # Level for the dependencies
       # <off|error|warn|info|debug|trace> optional, default: info
-      general_level: LevelFilter,
+      general_level: info
 
       # Level for the dependencies
       # <off|error|warn|info|debug|trace> optional, default: empty
@@ -90,11 +90,11 @@ telemetry:
 
       # Level for the crate
       # <off|error|warn|info|debug|trace> optional, default: info
-      level: LevelFilter,
+      level: info
 
       # Level for the dependencies
       # <off|error|warn|info|debug|trace> optional, default: info
-      general_level: LevelFilter,
+      general_level: info
 
       # Level for the dependencies
       # <off|error|warn|info|debug|trace> optional, default: empty
@@ -109,11 +109,11 @@ telemetry:
 
       # Level for the crate
       # <off|error|warn|info|debug|trace> optional, default: info
-      level: LevelFilter,
+      level: info
 
       # Level for the dependencies
       # <off|error|warn|info|debug|trace> optional, default: info
-      general_level: LevelFilter,
+      general_level: info
 
       # Level for the dependencies
       # <off|error|warn|info|debug|trace> optional, default: empty

@@ -18,6 +18,7 @@
 //! Tests for the pusher.
 
 #![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
 
 use std::sync::Arc;
 
@@ -39,7 +40,8 @@ use matrix_hedwig::{
 	models::Metrics,
 	settings::{self, Settings},
 };
-use opentelemetry::metrics::MeterProvider;
+use opentelemetry::{metrics::MeterProvider, KeyValue};
+use opentelemetry_sdk::{metrics::SdkMeterProvider, Resource};
 use regex::Regex;
 use rust_telemetry::config::OtelConfig;
 use serde_json::json;
@@ -93,10 +95,16 @@ fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, 
 	let registry = prometheus::Registry::new();
 	let exporter = opentelemetry_prometheus::exporter().with_registry(registry.clone()).build()?;
 
-	let provider =
-		opentelemetry_sdk::metrics::SdkMeterProvider::builder().with_reader(exporter).build();
+	let provider = SdkMeterProvider::builder()
+		.with_resource(
+			Resource::builder().with_attribute(KeyValue::new("service.name", "Hedwig")).build(),
+		)
+		.with_reader(exporter)
+		.build();
 	let meter = provider.meter("Hedwig");
 	let metrics = Metrics::new(&meter);
+
+	opentelemetry::global::set_meter_provider(provider);
 
 	let app_state = AppState::new(fcm_sender, settings, metrics);
 

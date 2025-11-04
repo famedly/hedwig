@@ -28,13 +28,14 @@ use axum::{
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
 use color_eyre::{eyre::WrapErr, Report};
 use opentelemetry::{metrics::MeterProvider, KeyValue};
-use opentelemetry_sdk::metrics::SdkMeterProvider;
+use opentelemetry_sdk::{metrics::SdkMeterProvider, Resource};
 use tokio::sync::Mutex;
 use tower_http::{catch_panic::CatchPanicLayer, normalize_path::NormalizePathLayer};
 use tracing::{debug, info, instrument};
 
 use crate::{
 	fcm::FcmSender,
+	metrics::{metrics_handler, HttpMetricsMiddleware},
 	models::{Metrics, Notification, PushGatewayResponse},
 	pusher,
 	settings::Settings,
@@ -139,16 +140,6 @@ impl AppState {
 	}
 }
 
-/// exposes Prometheus metrics
-async fn metrics_handler(State(registry): State<Arc<prometheus::Registry>>) -> String {
-	use prometheus::{Encoder, TextEncoder};
-	let encoder = TextEncoder::new();
-	let metric_families = registry.gather();
-	let mut buffer = Vec::new();
-	encoder.encode(&metric_families, &mut buffer).unwrap_or_default();
-	String::from_utf8(buffer).unwrap_or_default()
-}
-
 /// Create main Hedwig router.
 ///
 /// # Errors
@@ -164,9 +155,12 @@ pub fn create_router(
 	let usized_limit: usize = settings.hedwig.notification_request_body_size_limit.try_into()?;
 	let notification_body_limit = DefaultBodyLimit::max(usized_limit);
 
+	let http_metrics_middleware = HttpMetricsMiddleware::new(app_state.counters.clone());
+
 	let router = Router::new()
 		.route("/_matrix/push/v1/notify", post(matrix_push).layer(notification_body_limit))
 		.layer(OtelAxumLayer::default())
+		.layer(http_metrics_middleware)
 		.route("/metrics", get(metrics_handler).with_state(registry))
 		.route("/health", get(|| async { "" }))
 		.route("/version", get(|| async { VERSION }))
@@ -188,7 +182,13 @@ pub async fn run_server(
 	let registry = prometheus::Registry::new();
 	let exporter = opentelemetry_prometheus::exporter().with_registry(registry.clone()).build()?;
 
-	let provider = SdkMeterProvider::builder().with_reader(exporter).build();
+	let provider = SdkMeterProvider::builder()
+		.with_resource(
+			Resource::builder().with_attribute(KeyValue::new("service.name", "Hedwig")).build(),
+		)
+		.with_reader(exporter)
+		.build();
+
 	let meter = provider.meter("Hedwig");
 	let metrics = Metrics::new(&meter);
 

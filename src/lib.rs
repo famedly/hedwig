@@ -21,6 +21,7 @@
 pub mod api;
 pub mod error;
 pub mod fcm;
+pub mod metrics;
 pub mod models;
 pub mod pusher;
 pub mod settings;

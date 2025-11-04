@@ -22,6 +22,7 @@
 mod api;
 mod error;
 mod fcm;
+mod metrics;
 mod models;
 mod pusher;
 mod settings;
