@@ -45,16 +45,16 @@ fn create_test_settings(port: u16) -> Settings {
 	let hedwig = settings::Hedwig {
 		app_id: "com.test.app".to_owned(),
 		fcm_push_max_retries: 3,
-		fcm_notification_title: "Test".to_owned(),
-		fcm_notification_body: "Test body".to_owned(),
-		fcm_notification_sound: "default".to_owned(),
-		fcm_notification_icon: "test_icon".to_owned(),
-		fcm_notification_tag: "test_tag".to_owned(),
+		notification_title: "Test".to_owned(),
+		notification_body: "Test body".to_owned(),
+		notification_sound: "default".to_owned(),
+		notification_icon: "test_icon".to_owned(),
+		notification_tag: "test_tag".to_owned(),
 		fcm_notification_android_channel_id: "test_channel".to_owned(),
-		fcm_notification_click_action: "TEST_CLICK".to_owned(),
+		notification_click_action: "TEST_CLICK".to_owned(),
 		notification_request_body_size_limit:
 			Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
-		fcm_apns_push_type: "background".to_owned(),
+		apns_push_type: "background".to_owned(),
 	};
 	Settings { log, server, hedwig, telemetry: OtelConfig::default() }
 }

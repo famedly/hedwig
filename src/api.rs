@@ -34,6 +34,7 @@ use tower_http::{catch_panic::CatchPanicLayer, normalize_path::NormalizePathLaye
 use tracing::{debug, info, instrument};
 
 use crate::{
+	apns::{APNSSender, APNSSenderImpl},
 	fcm::FcmSender,
 	metrics::{metrics_handler, HttpMetricsMiddleware},
 	models::{Metrics, Notification, PushGatewayResponse},
@@ -45,6 +46,7 @@ use crate::{
 #[instrument]
 pub async fn matrix_push(
 	State(fcm_sender): State<Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>>,
+	State(apns_sender): State<Arc<APNSSenderImpl>>,
 	State(settings): State<Arc<Settings>>,
 	State(counters): State<Arc<Metrics>>,
 	notification: Notification,
@@ -63,7 +65,7 @@ pub async fn matrix_push(
 		let mut attempt = 0;
 		loop {
 			if let Err(e) =
-				pusher::push_notification(&notification, dev, &fcm_sender, &settings).await
+				pusher::push_notification_fcm(&notification, dev, &fcm_sender, &settings).await
 			{
 				attempt += 1;
 				if attempt > settings.hedwig.fcm_push_max_retries {
@@ -118,6 +120,9 @@ pub struct AppState {
 	/// [FcmSender] for communication with Firebase
 	/// Usually [crate::fcm::FcmSenderImpl]
 	fcm_sender: Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>,
+	/// [APNSSender] for communication with Apple Push Notification Service
+	/// Usually [crate::apns::APNSSenderImpl]
+	apns_sender: Arc<APNSSenderImpl>,
 	/// Hedwig [Settings]
 	settings: Arc<Settings>,
 	/// Prometheus [Metrics]
@@ -129,11 +134,13 @@ impl AppState {
 	#[must_use]
 	pub fn new(
 		fcm_sender: Box<dyn FcmSender + Send + Sync>,
+		apns_sender: APNSSenderImpl,
 		settings: Settings,
 		counters: Metrics,
 	) -> Self {
 		AppState {
 			fcm_sender: Arc::new(Mutex::new(fcm_sender)),
+			apns_sender: Arc::new(apns_sender),
 			settings: Arc::new(settings),
 			counters: Arc::new(counters),
 		}
@@ -176,6 +183,7 @@ pub fn create_router(
 pub async fn run_server(
 	settings: Settings,
 	fcm_sender: Box<dyn FcmSender + Send + Sync>,
+	apns_sender: APNSSenderImpl,
 ) -> Result<(), Report> {
 	let addr: SocketAddr = (settings.server.bind_address, settings.server.port).into();
 
@@ -194,7 +202,7 @@ pub async fn run_server(
 
 	opentelemetry::global::set_meter_provider(provider);
 
-	let app_state = AppState::new(fcm_sender, settings, metrics);
+	let app_state = AppState::new(fcm_sender, apns_sender, settings, metrics);
 
 	let router = create_router(app_state, Arc::new(registry))?;
 

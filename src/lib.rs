@@ -19,6 +19,7 @@
  */
 
 pub mod api;
+pub mod apns;
 pub mod error;
 pub mod fcm;
 pub mod metrics;

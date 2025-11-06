@@ -14,15 +14,15 @@ hedwig:
   app_id: "org.matrix.awesome_client"
   # specifies how many attempts at pushing a notification to a device should be made before giving up and reporting the push key as dead
   fcm_push_max_retries: 5
-  fcm_notification_click_action: "FLUTTER_NOTIFICATION_CLICK"
-  fcm_notification_title: "<count> unread rooms"
-  fcm_notification_body: "Open app to read the messages"
-  fcm_notification_sound: "default"
-  fcm_notification_icon: "notifications_icon"
-  fcm_notification_tag: "org.matrix.default_notification"
+  notification_click_action: "FLUTTER_NOTIFICATION_CLICK"
+  notification_title: "<count> unread rooms"
+  notification_body: "Open app to read the messages"
+  notification_sound: "default"
+  notification_icon: "notifications_icon"
+  notification_tag: "org.matrix.default_notification"
   fcm_notification_android_channel_id: "org.matrix.app.message"
   # https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types
-  fcm_apns_push_type: background
+  apns_push_type: background
   notification_request_body_size_limit: 15000
 
 # these are sample configuration options for the telemetry
