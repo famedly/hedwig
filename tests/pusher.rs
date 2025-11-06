@@ -20,8 +20,12 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use std::sync::Arc;
+use std::{path::PathBuf, sync::Arc};
 
+use a2::{
+	request::payload::{Payload, PayloadLike},
+	PushType,
+};
 use async_trait::async_trait;
 use axum::{
 	body::Body,
@@ -35,23 +39,24 @@ use color_eyre::Report;
 use firebae_cm::{FcmError, MessageBody};
 use matrix_hedwig::{
 	api::{create_router, AppState},
-	error::HedwigError,
+	apns::APNSSender,
+	error::{ErrCode, HedwigError},
 	fcm::FcmSender,
-	models::Metrics,
-	settings::{self, Settings},
+	models::{Metrics, NotificationMethod},
+	settings::{self, DeserializablePushType, Settings},
 };
 use opentelemetry::{metrics::MeterProvider, KeyValue};
 use opentelemetry_sdk::{metrics::SdkMeterProvider, Resource};
 use regex::Regex;
 use rust_telemetry::config::OtelConfig;
-use serde_json::json;
+use serde_json::{json, Value};
 use tokio::sync::mpsc;
 use tower::Service;
 
 #[derive(Debug)]
-struct FakeSender(mpsc::Sender<MessageBody>);
+struct FakeFcmSender(mpsc::Sender<MessageBody>);
 #[async_trait]
-impl FcmSender for FakeSender {
+impl FcmSender for FakeFcmSender {
 	async fn send(&self, message: MessageBody) -> Result<String, HedwigError> {
 		let should_fail = format!("{message:?}").contains("fcm_fail_pls");
 
@@ -69,7 +74,28 @@ impl FcmSender for FakeSender {
 	}
 }
 
-fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, Report> {
+#[derive(Debug)]
+struct FakeAPNSSender {
+	tx: mpsc::Sender<Payload>,
+}
+#[async_trait]
+impl APNSSender for FakeAPNSSender {
+	async fn send(&self, payload: Payload) -> Result<(), HedwigError> {
+		let should_fail = payload.device_token.contains("apns_fail_pls");
+
+		self.tx.send(payload).await.unwrap();
+		if should_fail {
+			Err(HedwigError { error: "Bad Request".to_owned(), errcode: ErrCode::APNSFailed })
+		} else {
+			Ok(())
+		}
+	}
+}
+
+fn setup_server(
+	fcm_sender: Box<dyn FcmSender + Send + Sync>,
+	apns_sender: Option<Box<dyn APNSSender + Send + Sync>>,
+) -> Result<Router, Report> {
 	let settings = {
 		let log = settings::Log { level: "DEBUG".to_owned() };
 
@@ -77,17 +103,23 @@ fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, 
 
 		let hedwig = settings::Hedwig {
 			app_id: "com.famedly.🦊".to_owned(),
-			fcm_push_max_retries: 4,
-			fcm_notification_title: "🦊 <count> 🦊".to_owned(),
-			fcm_notification_body: "read the notification pls :c".to_owned(),
-			fcm_notification_sound: "default".to_owned(),
-			fcm_notification_icon: "notifications_icon".to_owned(),
-			fcm_notification_tag: "org.matrix.default_notification".to_owned(),
+			push_max_retries: 4,
+			notification_title: "🦊 <count> 🦊".to_owned(),
+			notification_body: "read the notification pls :c".to_owned(),
+			notification_sound: "default".to_owned(),
+			notification_icon: "notifications_icon".to_owned(),
+			notification_tag: "org.matrix.default_notification".to_owned(),
 			fcm_notification_android_channel_id: "org.matrix.app.message".to_owned(),
-			fcm_notification_click_action: "FLUTTER_NOTIFICATION_CLICK".to_owned(),
-			fcm_apns_push_type: "background".to_owned(),
+			notification_click_action: "FLUTTER_NOTIFICATION_CLICK".to_owned(),
+			apns_push_type: DeserializablePushType(PushType::Background),
+			apns_topic: "app.bundle.id".to_owned(),
 			notification_request_body_size_limit:
 				Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
+			apns_key_file_path: None,
+			fcm_credentials_file_path: PathBuf::from(""),
+			apns_key_id: "".to_owned(),
+			apns_team_id: "".to_owned(),
+			apns_sandbox: false,
 		};
 		Settings { log, server, hedwig, telemetry: OtelConfig::default() }
 	};
@@ -106,14 +138,14 @@ fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, 
 
 	opentelemetry::global::set_meter_provider(provider);
 
-	let app_state = AppState::new(fcm_sender, settings, metrics);
+	let app_state = AppState::new(fcm_sender, apns_sender, settings, metrics);
 
 	let router = create_router(app_state, Arc::new(registry))?;
 
 	Ok(router)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Platform {
 	Android,
 	AndroidLegacy,
@@ -121,7 +153,7 @@ enum Platform {
 	Generic,
 }
 
-fn get_device(app_id: &str, platform: Platform) -> serde_json::Value {
+fn get_device(app_id: &str, platform: Platform, notify_via: NotificationMethod) -> Value {
 	let (app_id, data) = match platform {
 		Platform::Android => (
 			app_id.to_owned(),
@@ -155,15 +187,21 @@ fn get_device(app_id: &str, platform: Platform) -> serde_json::Value {
 		),
 	};
 
-	json!({
+	let mut device = json!({
 		"app_id": app_id,
 		"data": data,
 		"pushkey": format!("{platform:?}"),
-		"pushkey_ts": 1_655_896_032_i32
-	})
+		"pushkey_ts": 1_655_896_032_i32,
+	});
+
+	if matches!(platform, Platform::IoS) {
+		device["notify_via"] = json!(notify_via);
+	}
+
+	device
 }
 
-fn test_message(clearing: bool, devices: Vec<serde_json::Value>) -> serde_json::Value {
+fn test_message(clearing: bool, devices: Vec<Value>) -> Value {
 	if !clearing {
 		json!({
 			"notification": {
@@ -203,7 +241,7 @@ async fn response_to_string(
 
 async fn run_request(
 	service: &mut Router,
-	body: serde_json::Value,
+	body: Value,
 ) -> Result<String, Box<dyn std::error::Error>> {
 	let body = serde_json::to_string(&body)?;
 
@@ -235,16 +273,70 @@ async fn check_prom(
 
 #[tokio::test]
 async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
-	let (tx, mut _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx)))?;
+	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, mut _apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Some(Box::new(FakeAPNSSender { tx: apns_tx })),
+	)?;
 
 	let msg = json!({
 		"notification": {
 			"counts": {
 				"unread": 1337_i32
 			},
-			"devices": [get_device("com.famedly.🦊", Platform::IoS)],
+			"devices": [get_device("com.famedly.🦊", Platform::Android, NotificationMethod::Fcm)],
 			"room_id": "fcm_fail_pls",
+			"event-id": "uwu",
+			"prio": "high"
+		}
+	});
+	assert_eq!("{\"rejected\":[\"Android\"]}", run_request(&mut service, msg).await?);
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn apns_through_fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
+	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, mut _apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Some(Box::new(FakeAPNSSender { tx: apns_tx })),
+	)?;
+
+	let msg = json!({
+		"notification": {
+			"counts": {
+				"unread": 1337_i32
+			},
+			"devices": [get_device("apns_fail_pls", Platform::IoS, NotificationMethod::Fcm)],
+			"room_id": "whatever",
+			"event-id": "uwu",
+			"prio": "high"
+		}
+	});
+	assert_eq!("{\"rejected\":[\"IoS\"]}", run_request(&mut service, msg).await?);
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn direct_apns_failure() -> Result<(), Box<dyn std::error::Error>> {
+	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, mut _apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Some(Box::new(FakeAPNSSender { tx: apns_tx })),
+	)?;
+
+	let msg = json!({
+		"notification": {
+			"counts": {
+				"unread": 1337_i32
+			},
+			"devices": [get_device("apns_fail_pls", Platform::IoS, NotificationMethod::Apns)],
+			"room_id": "whatever",
 			"event-id": "uwu",
 			"prio": "high"
 		}
@@ -256,8 +348,12 @@ async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::test]
 async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
-	let (tx, mut _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx)))?;
+	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, mut _apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Some(Box::new(FakeAPNSSender { tx: apns_tx })),
+	)?;
 
 	let body = "I hate json";
 
@@ -280,14 +376,18 @@ async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::test]
 async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
-	let (tx, _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx)))?;
+	let (fcm_tx, _fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, _apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Some(Box::new(FakeAPNSSender { tx: apns_tx })),
+	)?;
 
 	let body_limit: usize =
 		Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT.try_into().unwrap();
 	let too_long_content = format!("com.famedly.{}", "🐉".repeat(body_limit));
 
-	let device = vec![get_device(&too_long_content, Platform::Android)];
+	let device = vec![get_device(&too_long_content, Platform::Android, NotificationMethod::Fcm)];
 	let too_long_message = test_message(false, device);
 	let body = serde_json::to_string(&too_long_message)?;
 
@@ -310,25 +410,54 @@ async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::test]
 async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
-	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx)))?;
+	let (fcm_tx, mut fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, mut apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Some(Box::new(FakeAPNSSender { tx: apns_tx })),
+	)?;
 
-	for (clearing, platform, filename) in [
-		(true, Platform::Android, "tests/message_android_clearing.json"),
-		(false, Platform::Android, "tests/message_android.json"),
-		(true, Platform::AndroidLegacy, "tests/message_android_legacy_clearing.json"),
-		(false, Platform::AndroidLegacy, "tests/message_android_legacy.json"),
-		(true, Platform::Generic, "tests/message_generic_clearing.json"),
-		(false, Platform::Generic, "tests/message_generic.json"),
-		(true, Platform::IoS, "tests/message_ios_clearing.json"),
-		(false, Platform::IoS, "tests/message_ios.json"),
+	for (clearing, platform, filename, notify_via) in [
+		(true, Platform::Android, "tests/message_android_clearing.json", NotificationMethod::Fcm),
+		(false, Platform::Android, "tests/message_android.json", NotificationMethod::Fcm),
+		(
+			true,
+			Platform::AndroidLegacy,
+			"tests/message_android_legacy_clearing.json",
+			NotificationMethod::Fcm,
+		),
+		(
+			false,
+			Platform::AndroidLegacy,
+			"tests/message_android_legacy.json",
+			NotificationMethod::Fcm,
+		),
+		(true, Platform::Generic, "tests/message_generic_clearing.json", NotificationMethod::Fcm),
+		(false, Platform::Generic, "tests/message_generic.json", NotificationMethod::Fcm),
+		(true, Platform::IoS, "tests/message_ios_fcm_clearing.json", NotificationMethod::Fcm),
+		(false, Platform::IoS, "tests/message_ios_fcm.json", NotificationMethod::Fcm),
+		(
+			true,
+			Platform::IoS,
+			"tests/message_ios_direct_apns_clearing.json",
+			NotificationMethod::Apns,
+		),
+		(false, Platform::IoS, "tests/message_ios_direct_apns.json", NotificationMethod::Apns),
 	] {
 		let resp = run_request(
 			&mut service,
-			test_message(clearing, vec![get_device("com.famedly.🦊", platform)]),
+			test_message(
+				clearing,
+				vec![get_device("com.famedly.🦊", platform.clone(), notify_via.clone())],
+			),
 		)
 		.await?;
-		let posted_message = serde_json::to_string(&rx.recv().await.unwrap())?;
+
+		let posted_message = match notify_via {
+			NotificationMethod::Apns => apns_rx.recv().await.unwrap().to_json_string()?,
+			_ => serde_json::to_string(&fcm_rx.recv().await.unwrap())?,
+		};
+
 		assert_eq!(&resp, "{\"rejected\":[]}");
 		assert_eq!(posted_message, std::fs::read_to_string(filename)?.trim_end());
 	}
@@ -340,14 +469,27 @@ async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::test]
 async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
-	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx)))?;
+	let (fcm_tx, mut fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, mut apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Some(Box::new(FakeAPNSSender { tx: apns_tx })),
+	)?;
 
-	let dev = vec![get_device("com.famedly.🦊", Platform::IoS)];
+	// with apns
+	let dev = vec![get_device("com.famedly.🦊", Platform::IoS, NotificationMethod::Apns)];
 
 	for _ in 1..100 {
 		run_request(&mut service, test_message(false, dev.clone())).await?;
-		rx.recv().await.unwrap();
+		apns_rx.recv().await.unwrap();
+	}
+
+	// with fcm
+	let dev = vec![get_device("com.famedly.🦊", Platform::IoS, NotificationMethod::Fcm)];
+
+	for _ in 1..100 {
+		run_request(&mut service, test_message(false, dev.clone())).await?;
+		fcm_rx.recv().await.unwrap();
 	}
 
 	Ok(())
@@ -355,38 +497,43 @@ async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::test]
 async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
-	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx)))?;
+	let (fcm_tx, mut fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, _apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Some(Box::new(FakeAPNSSender { tx: apns_tx })),
+	)?;
 
 	// Success
 	for clearing in [true, false] {
 		let devices =
 			[Platform::Android, Platform::AndroidLegacy, Platform::IoS, Platform::Generic]
-				.map(|platform| get_device("com.famedly.🦊", platform))
+				.map(|platform| get_device("com.famedly.🦊", platform, NotificationMethod::Fcm))
 				.to_vec();
 
 		let resp = run_request(&mut service, test_message(clearing, devices)).await?;
 		assert_eq!(&resp, "{\"rejected\":[]}");
 
-		for filename in [
-			"tests/message_android",
-			"tests/message_android_legacy",
-			"tests/message_ios",
-			"tests/message_generic",
+		for (_, filename) in [
+			(Platform::Android, "tests/message_android"),
+			(Platform::AndroidLegacy, "tests/message_android_legacy"),
+			(Platform::IoS, "tests/message_ios_fcm"),
+			(Platform::Generic, "tests/message_generic"),
 		]
-		.map(|name| if clearing { format!("{name}_clearing.json") } else { format!("{name}.json") })
-		{
-			let posted_message = serde_json::to_string(&rx.recv().await.unwrap())?;
+		.map(|(p, n)| {
+			(p, if clearing { format!("{n}_clearing.json") } else { format!("{n}.json") })
+		}) {
+			let posted_message = serde_json::to_string(&fcm_rx.recv().await.unwrap())?;
 			assert_eq!(posted_message, std::fs::read_to_string(filename)?.trim_end());
 		}
 	}
 
 	// Partial failure
 	let devices = vec![
-		get_device("com.famedly.🐾", Platform::AndroidLegacy),
-		get_device("com.famedly.🦊", Platform::Android),
-		get_device("com.famedly.🐾", Platform::Generic),
-		get_device("com.famedly.🦊", Platform::IoS),
+		get_device("com.famedly.🐾", Platform::AndroidLegacy, NotificationMethod::Fcm),
+		get_device("com.famedly.🦊", Platform::Android, NotificationMethod::Fcm),
+		get_device("com.famedly.🐾", Platform::Generic, NotificationMethod::Fcm),
+		get_device("com.famedly.🦊", Platform::IoS, NotificationMethod::Fcm),
 	];
 	let resp = run_request(&mut service, test_message(true, devices)).await?;
 	assert_eq!(&resp, "{\"rejected\":[\"AndroidLegacy\",\"Generic\"]}");
@@ -396,21 +543,31 @@ async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[derive(Debug)]
-struct PanickingSender;
+struct PanickingFcmSender;
 #[async_trait]
-impl FcmSender for PanickingSender {
+impl FcmSender for PanickingFcmSender {
 	async fn send(&self, _message: MessageBody) -> Result<String, HedwigError> {
+		panic!("Run for your lives!");
+	}
+}
+
+#[derive(Debug)]
+struct PanickingAPNSSender {}
+#[async_trait]
+impl APNSSender for PanickingAPNSSender {
+	async fn send(&self, _payload: Payload) -> Result<(), HedwigError> {
 		panic!("Run for your lives!");
 	}
 }
 
 #[tokio::test]
 async fn panic_handler() -> Result<(), Box<dyn std::error::Error>> {
-	let mut service = setup_server(Box::new(PanickingSender))?;
+	let mut service =
+		setup_server(Box::new(PanickingFcmSender), Some(Box::new(PanickingAPNSSender {})))?;
 
 	let body = serde_json::to_string(&test_message(
 		false,
-		vec![get_device("com.famedly.🦊", Platform::IoS)],
+		vec![get_device("com.famedly.🦊", Platform::IoS, NotificationMethod::Fcm)],
 	))?;
 	let resp = service
 		.call(

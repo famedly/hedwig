@@ -17,23 +17,38 @@
  */
 //! Tests for the api server.
 
+use std::path::PathBuf;
+
+use a2::{request::payload::Payload, PushType};
 use async_trait::async_trait;
 use firebae_cm::MessageBody;
 use matrix_hedwig::{
 	api::run_server,
+	apns::APNSSender,
 	error::HedwigError,
 	fcm::FcmSender,
-	settings::{self, Settings},
+	settings::{self, DeserializablePushType, Settings},
 };
 use rust_telemetry::config::OtelConfig;
 use tokio::time;
 
 #[derive(Debug)]
-struct FakeSender;
+struct FakeFcmSender;
+
 #[async_trait]
-impl FcmSender for FakeSender {
+impl FcmSender for FakeFcmSender {
 	async fn send(&self, _message: MessageBody) -> Result<String, HedwigError> {
 		Ok("test".to_owned())
+	}
+}
+
+#[derive(Debug)]
+struct FakeAPNSSender {}
+
+#[async_trait]
+impl APNSSender for FakeAPNSSender {
+	async fn send(&self, _payload: Payload) -> Result<(), HedwigError> {
+		Ok(())
 	}
 }
 
@@ -44,17 +59,23 @@ fn create_test_settings(port: u16) -> Settings {
 
 	let hedwig = settings::Hedwig {
 		app_id: "com.test.app".to_owned(),
-		fcm_push_max_retries: 3,
-		fcm_notification_title: "Test".to_owned(),
-		fcm_notification_body: "Test body".to_owned(),
-		fcm_notification_sound: "default".to_owned(),
-		fcm_notification_icon: "test_icon".to_owned(),
-		fcm_notification_tag: "test_tag".to_owned(),
+		push_max_retries: 3,
+		notification_title: "Test".to_owned(),
+		notification_body: "Test body".to_owned(),
+		notification_sound: "default".to_owned(),
+		notification_icon: "test_icon".to_owned(),
+		notification_tag: "test_tag".to_owned(),
 		fcm_notification_android_channel_id: "test_channel".to_owned(),
-		fcm_notification_click_action: "TEST_CLICK".to_owned(),
+		notification_click_action: "TEST_CLICK".to_owned(),
 		notification_request_body_size_limit:
 			Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
-		fcm_apns_push_type: "background".to_owned(),
+		apns_push_type: DeserializablePushType(PushType::Background),
+		apns_topic: "app.bundle.id".to_owned(),
+		apns_key_file_path: None,
+		fcm_credentials_file_path: PathBuf::from(""),
+		apns_team_id: "TEAM_ID".to_owned(),
+		apns_key_id: "KEY_ID".to_owned(),
+		apns_sandbox: false,
 	};
 	Settings { log, server, hedwig, telemetry: OtelConfig::default() }
 }
@@ -63,9 +84,10 @@ fn create_test_settings(port: u16) -> Settings {
 async fn server_starts_successfully() -> Result<(), Box<dyn std::error::Error>> {
 	// Use a high port that's unlikely to be in use
 	let settings = create_test_settings(0);
-	let fcm_sender: Box<dyn FcmSender + Send + Sync> = Box::new(FakeSender);
+	let fcm_sender: Box<dyn FcmSender + Send + Sync> = Box::new(FakeFcmSender);
+	let apns_sender = FakeAPNSSender {};
 
-	let server_handle = tokio::spawn(run_server(settings, fcm_sender));
+	let server_handle = tokio::spawn(run_server(settings, fcm_sender, Some(apns_sender)));
 
 	// wait in case an error occurs during startup
 	time::sleep(time::Duration::from_secs(1)).await;

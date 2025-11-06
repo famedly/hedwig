@@ -20,7 +20,7 @@ This project name aged badly, trans rights are human rights!
 Multiple configuration files must be setup :
 
 - `config.yaml` (from `config.sample.yaml`) for hedwig's config
-- authentication against GCP is done with `gcp_auth`, you need to setup one of the 4 authentication methods listed [here](https://github.com/djc/gcp_auth/blob/5a1e48db47784c9afdbad38a33907cb2e98bbfdd/README.md)
+- authentication against GCP is done with `gcp_auth`, you need to setup one of the 4 authentication methods listed [here](https://github.com/djc/gcp_auth/blob/5a1e48db47784c9afdbad38a33907cb2e98bbfdd/README.md). The setting value `fcm_credentials_file_path` will be set as the env var `GOOGLE_APPLICATION_CREDENTIALS`
 
 Hedwig's config `config.yaml` can be replaced by environment variables, which is used for the local kubernetes development setup. All variables are namespaced under `PUSHGW`, with a double underscore (`__`) being the separator between the prefix and all keys. As an example, `server.bind_address` would be represented as `PUSHGW__SERVER__BIND_ADDRESS`. See `deploy/config.properties.sample` for an example configuration.
 

@@ -18,11 +18,12 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::net::IpAddr;
+use std::{net::IpAddr, path::PathBuf};
 
+use a2::PushType;
 use config::{Config, ConfigError, Environment, File};
 use rust_telemetry::config::OtelConfig;
-use serde::Deserialize;
+use serde::{de, Deserialize, Deserializer};
 
 /// Hedwig configuration
 #[derive(Debug, Deserialize)]
@@ -30,28 +31,69 @@ pub struct Hedwig {
 	/// Application ID
 	pub app_id: String,
 	/// Maximum amount of attempts hedwig should make
-	pub fcm_push_max_retries: i64,
+	pub push_max_retries: i64,
 	/// The text to display in a notification (replaces <count> tag with a
 	/// notification count
-	pub fcm_notification_title: String,
+	pub notification_title: String,
 	/// The text to display as a notification body
-	pub fcm_notification_body: String,
+	pub notification_body: String,
 	/// What sound should be played as a part of notification
-	pub fcm_notification_sound: String,
+	pub notification_sound: String,
 	/// Notification icon
-	pub fcm_notification_icon: String,
+	pub notification_icon: String,
 	/// Notification tag
-	pub fcm_notification_tag: String,
+	pub notification_tag: String,
 	/// ID of the android channel
 	pub fcm_notification_android_channel_id: String,
 	/// Action to trigger on the notification click
-	pub fcm_notification_click_action: String,
+	pub notification_click_action: String,
 	/// Type of notification for Apple devices
-	pub fcm_apns_push_type: String,
+	pub apns_push_type: DeserializablePushType,
+	/// Usually the bundle ID of the app
+	pub apns_topic: String,
+	/// Path to the APNs key file
+	pub apns_key_file_path: Option<PathBuf>,
+	/// Path to the FCM credentials file
+	pub fcm_credentials_file_path: PathBuf,
+	/// Team ID of the APNs key
+	pub apns_team_id: String,
+	/// Key ID of the APNs key
+	pub apns_key_id: String,
+	/// Whether to use the sandbox environment
+	pub apns_sandbox: bool,
 	/// Maximum accepted length for NotificationRequests via push
 	///
 	/// Defaults to [Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT]
 	pub notification_request_body_size_limit: u64,
+}
+
+/// We need this to implement the Deserialize trait for PushType
+/// Ideally, the Deserialize trait should be implemented in the a2 crate
+/// directly
+#[derive(Debug)]
+pub struct DeserializablePushType(pub PushType);
+
+impl<'de> Deserialize<'de> for DeserializablePushType {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let s = String::deserialize(deserializer)?.to_lowercase();
+
+		let push_type = match s.as_str() {
+			"alert" => PushType::Alert,
+			"background" => PushType::Background,
+			// "location" => PushType::Location,
+			// "voip" => PushType::Voip,
+			// "fileprovider" => PushType::FileProvider,
+			// "mdm" => PushType::Mdm,
+			// "liveactivity" => PushType::LiveActivity,
+			// "pushtotalk" => PushType::PushToTalk,
+			_ => return Err(de::Error::custom(format!("Unknown PushType: '{s}'",))),
+		};
+
+		Ok(DeserializablePushType(push_type))
+	}
 }
 
 /// Push gateway server configuration

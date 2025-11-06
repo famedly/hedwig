@@ -20,6 +20,7 @@
  */
 
 mod api;
+mod apns;
 mod error;
 mod fcm;
 mod metrics;
@@ -30,7 +31,7 @@ mod settings;
 use color_eyre::{eyre::WrapErr, Report};
 use tracing::info;
 
-use crate::fcm::FcmSenderImpl;
+use crate::{apns::APNSSenderImpl, fcm::FcmSenderImpl};
 
 #[tokio::main]
 // Need to be able to print errors before the logger is up
@@ -43,10 +44,26 @@ async fn main() -> Result<(), Report> {
 
 	info!("Launching with settings: {:?}", settings);
 
-	let fcm_auth = FcmSenderImpl::new().await.wrap_err("Fcm authentication failed")?;
+	let fcm_auth = FcmSenderImpl::new(&settings.hedwig.fcm_credentials_file_path)
+		.await
+		.wrap_err("Fcm setup failed")?;
 
+	let apns_auth = settings
+		.hedwig
+		.apns_key_file_path
+		.as_ref()
+		.map(|path| {
+			APNSSenderImpl::new(
+				path.clone(),
+				settings.hedwig.apns_team_id.clone(),
+				settings.hedwig.apns_key_id.clone(),
+				settings.hedwig.apns_sandbox,
+			)
+			.wrap_err("APNS authentication failed")
+		})
+		.transpose()?;
 	info!("Starting server");
-	api::run_server(settings, Box::new(fcm_auth)).await?;
+	api::run_server(settings, Box::new(fcm_auth), apns_auth).await?;
 
 	Ok(())
 }

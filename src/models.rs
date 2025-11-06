@@ -70,6 +70,19 @@ pub struct Device {
 	/// A dictionary of customisations made to the way this notification is to
 	/// be presented.
 	pub tweaks: Option<serde_json::Value>,
+	/// Whether to use fcm or apns for iOS notifications
+	pub notify_via: Option<NotificationMethod>,
+}
+
+/// What service to use for sending notifications, fallback to fcm
+#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum NotificationMethod {
+	/// Firebase Cloud Messaging
+	#[default]
+	Fcm,
+	/// Apple Push Notification Service
+	Apns,
 }
 
 /// What kind of data message should be sent (if any)

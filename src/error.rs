@@ -25,7 +25,7 @@ use serde::Serialize;
 use tracing::error;
 
 /// Matrix error types
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum ErrCode {
 	/// The notification json is malformed
@@ -34,16 +34,26 @@ pub enum ErrCode {
 	FcmFailed,
 	/// Fcm Auth failure
 	FcmAuthFailed,
+	/// APNS Private Key not found
+	APNSPrivateKeyNotFound,
+	/// APNS Authentication failure
+	APNSAuthFailed,
+	/// APNS notification sending failed
+	APNSFailed,
+	/// APNS not configured
+	APNSNotConfigured,
 }
 
 /// Matrix error
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Debug, PartialEq)]
 pub struct HedwigError {
 	/// The error text
 	pub error: String,
 	/// Matrix-formatted Error code
 	pub errcode: ErrCode,
 }
+
+impl std::error::Error for HedwigError {}
 
 impl Display for HedwigError {
 	fn fmt(&self, f: &mut Formatter) -> FmtResult {
@@ -65,7 +75,7 @@ impl From<gcp_auth::Error> for HedwigError {
 	fn from(err: gcp_auth::Error) -> Self {
 		error!("failed to get fcm token!: {}", err);
 		Self {
-			error: "Failed to authenticate with push service!".to_owned(),
+			error: "Failed to authenticate with fcm!".to_owned(),
 			errcode: ErrCode::FcmAuthFailed,
 		}
 	}

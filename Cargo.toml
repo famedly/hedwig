@@ -1,6 +1,6 @@
 [package]
 name = "matrix-hedwig"
-version = "2.0.0"
+version = "2.2.0"
 authors = [
 	"Christian Pauly <c.pauly@famedly.com>",
 	"Kateřina Churanová <k.churanova@famedly.com>",
@@ -10,6 +10,7 @@ publish = false
 edition = "2021"
 
 [dependencies]
+a2 = { version = "0.10.0", git = "https://github.com/famedly/a2.git", branch = "thomast/owned-struct-params" }
 async-trait = "0.1.89"
 axum = { version = "0.8.6", features = ["macros"] }
 axum-tracing-opentelemetry = "0.32.1"

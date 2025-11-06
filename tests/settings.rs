@@ -8,4 +8,5 @@ use matrix_hedwig::settings;
 fn load_settings() {
 	settings::Settings::load("config.sample.yaml").unwrap();
 	settings::Settings::load("tests/config-bad.yaml").unwrap_err();
+	settings::Settings::load("tests/config-bad-apns.yaml").unwrap_err();
 }

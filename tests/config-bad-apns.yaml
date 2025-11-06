@@ -22,7 +22,7 @@ hedwig:
   notification_tag: "org.matrix.default_notification"
   fcm_notification_android_channel_id: "org.matrix.app.message"
   # https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types
-  apns_push_type: background
+  apns_push_type: unsupported_push_type
   apns_topic: app.bundle.id
   # leave blank if you don't want to use APNS directly
   apns_key_file_path: "path/to/apns_key.p8"

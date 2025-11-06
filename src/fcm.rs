@@ -20,7 +20,9 @@
  */
 
 use std::{
+	env::set_var,
 	fmt::{self, Debug},
+	path::PathBuf,
 	sync::Arc,
 };
 
@@ -31,7 +33,7 @@ use gcp_auth::TokenProvider;
 use crate::error::HedwigError;
 
 /// Trait for allowing the use of different senders for fcm messages
-/// Mainly this way to make testing possible
+/// This is mainly to make testing possible
 #[async_trait]
 pub trait FcmSender: Debug {
 	/// Send off a message to fcm
@@ -54,7 +56,9 @@ impl Debug for FcmSenderImpl {
 
 impl FcmSenderImpl {
 	/// Create new fcm sender from the path to a service-account fcm token
-	pub async fn new() -> Result<Self, gcp_auth::Error> {
+	pub async fn new(credentials_file_path: &PathBuf) -> Result<Self, gcp_auth::Error> {
+		// gcp_auth will read this env var
+		set_var("GOOGLE_APPLICATION_CREDENTIALS", credentials_file_path);
 		let provider = gcp_auth::provider().await?;
 		let project_id: String = provider.project_id().await?.to_string();
 
