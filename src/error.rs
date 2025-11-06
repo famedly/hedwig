@@ -34,6 +34,12 @@ pub enum ErrCode {
 	FcmFailed,
 	/// Fcm Auth failure
 	FcmAuthFailed,
+	/// APNS Private Key not found
+	APNSPrivateKeyNotFound,
+	/// APNS Auth failure
+	APNSAuthFailed,
+	/// APNS notification sending failed
+	APNSFailed,
 }
 
 /// Matrix error
@@ -44,6 +50,8 @@ pub struct HedwigError {
 	/// Matrix-formatted Error code
 	pub errcode: ErrCode,
 }
+
+impl std::error::Error for HedwigError {}
 
 impl Display for HedwigError {
 	fn fmt(&self, f: &mut Formatter) -> FmtResult {

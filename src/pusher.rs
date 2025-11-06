@@ -19,6 +19,7 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use a2::DefaultNotificationBuilder;
 use firebae_cm::{
 	self, AndroidConfig, AndroidMessagePriority, AndroidNotification, ApnsConfig, MessageBody,
 };
@@ -27,6 +28,7 @@ use tokio::sync::Mutex;
 use tracing::debug;
 
 use crate::{
+	apns::{APNSSender, APNSSenderImpl},
 	error::{ErrCode, HedwigError},
 	fcm::FcmSender,
 	models::{ApnsHeaders, DataMessageType, Device, Notification},
@@ -35,7 +37,7 @@ use crate::{
 
 /// Pushes the FCM notification to the given device
 #[allow(clippy::unused_async)]
-pub async fn push_notification(
+pub async fn push_notification_fcm(
 	notification: &Notification,
 	device: &Device,
 	sender: &Mutex<Box<dyn FcmSender + Send + Sync>>,
@@ -48,8 +50,8 @@ pub async fn push_notification(
 	let count = notification.counts.as_ref().and_then(|c| c.unread).unwrap_or_default();
 
 	let fcm_notification = firebae_cm::Notification {
-		title: Some(settings.hedwig.fcm_notification_title.replace("<count>", &count.to_string())),
-		body: Some(settings.hedwig.fcm_notification_body.clone()),
+		title: Some(settings.hedwig.notification_title.replace("<count>", &count.to_string())),
+		body: Some(settings.hedwig.notification_body.clone()),
 		image: None,
 	};
 
@@ -68,36 +70,6 @@ pub async fn push_notification(
 
 			body.data(notification.data(device)?)?.android(android_config);
 		}
-		DataMessageType::Ios => {
-			// Used for background notification handling on iOS, if enabled by the app
-
-			// If there's no room_id then this is a badge only notification that must not
-			// have any notification content
-			if notification.room_id.is_some() {
-				// If apple decide not to run the service extension there needs to be a fallback
-				// notification
-				body.notification(fcm_notification);
-			}
-
-			body.data(notification.data(device)?)?;
-
-			let mut ios_config = ApnsConfig::new();
-			ios_config.payload(json!({
-				"aps": {
-					"mutable-content": 1,
-					"badge": count,
-					"sound": settings.hedwig.fcm_notification_sound
-				}
-			}))?;
-
-			// Priority needs to be 5 for the service extension to be used
-			ios_config.headers(ApnsHeaders {
-				apns_priority: "5".to_owned(),
-				apns_push_type: settings.hedwig.fcm_apns_push_type.clone(),
-			})?;
-
-			body.apns(ios_config);
-		}
 		DataMessageType::None => {
 			// Generic notification following the settings
 			// This codepath runs on old versions of the iOS app also works fine with
@@ -112,11 +84,10 @@ pub async fn push_notification(
 			let mut android_notification = AndroidNotification::new();
 			android_notification
 				.channel_id(settings.hedwig.fcm_notification_android_channel_id.clone());
-			android_notification.icon(settings.hedwig.fcm_notification_icon.clone());
-			android_notification.sound(settings.hedwig.fcm_notification_sound.clone());
-			android_notification.tag(settings.hedwig.fcm_notification_tag.clone());
-			android_notification
-				.click_action(settings.hedwig.fcm_notification_click_action.clone());
+			android_notification.icon(settings.hedwig.notification_icon.clone());
+			android_notification.sound(settings.hedwig.notification_sound.clone());
+			android_notification.tag(settings.hedwig.notification_tag.clone());
+			android_notification.click_action(settings.hedwig.notification_click_action.clone());
 
 			let mut android_config = AndroidConfig::new();
 			android_config.notification(android_notification);
@@ -126,21 +97,51 @@ pub async fn push_notification(
 			let mut ios_config = ApnsConfig::new();
 			ios_config.headers(ApnsHeaders {
 				apns_priority: "10".to_owned(),
-				apns_push_type: settings.hedwig.fcm_apns_push_type.clone(),
+				apns_push_type: settings.hedwig.apns_push_type.0.to_string(),
 			})?;
 			ios_config.payload(json!({
 				"aps": {
 					"badge": count,
-					"sound": settings.hedwig.fcm_notification_sound
+					"sound": settings.hedwig.notification_sound
 				}
 			}))?;
 
 			body.android(android_config);
 			body.apns(ios_config);
 		}
+		// we should never end up here as this case is handled by push_notification_apns
+		DataMessageType::Ios => {}
 	};
 
 	sender.lock().await.send(body).await?;
+
+	Ok(())
+}
+
+/// Pushes a notification to an iOS device using APNs
+pub async fn push_notification_apns(
+	notification: &Notification,
+	device: &Device,
+	sender: &APNSSenderImpl,
+	settings: &Settings,
+) -> Result<(), HedwigError> {
+	if !device.app_id.starts_with(&settings.hedwig.app_id) {
+		return Err(HedwigError { error: "Invalid app id!".to_owned(), errcode: ErrCode::BadJson });
+	}
+
+	let count = notification.counts.as_ref().and_then(|c| c.unread).unwrap_or_default();
+
+	let builder = DefaultNotificationBuilder::new()
+		.set_body(&settings.hedwig.notification_body)
+		.set_sound(&settings.hedwig.notification_sound)
+		.set_title(&settings.hedwig.notification_title)
+		.set_badge(u32::from(count))
+		.set_mutable_content()
+		.set_badge(1_u32);
+
+	debug!("Pushing notification to {:?} device", device.data_message_type());
+
+	sender.send(builder.clone(), &device.pushkey).await?;
 
 	Ok(())
 }

@@ -20,9 +20,10 @@
 
 use std::net::IpAddr;
 
+use a2::PushType;
 use config::{Config, ConfigError, Environment, File};
 use rust_telemetry::config::OtelConfig;
-use serde::Deserialize;
+use serde::{de, Deserialize, Deserializer};
 
 /// Hedwig configuration
 #[derive(Debug, Deserialize)]
@@ -33,25 +34,57 @@ pub struct Hedwig {
 	pub fcm_push_max_retries: i64,
 	/// The text to display in a notification (replaces <count> tag with a
 	/// notification count
-	pub fcm_notification_title: String,
+	pub notification_title: String,
 	/// The text to display as a notification body
-	pub fcm_notification_body: String,
+	pub notification_body: String,
 	/// What sound should be played as a part of notification
-	pub fcm_notification_sound: String,
+	pub notification_sound: String,
 	/// Notification icon
-	pub fcm_notification_icon: String,
+	pub notification_icon: String,
 	/// Notification tag
-	pub fcm_notification_tag: String,
+	pub notification_tag: String,
 	/// ID of the android channel
 	pub fcm_notification_android_channel_id: String,
 	/// Action to trigger on the notification click
-	pub fcm_notification_click_action: String,
+	pub notification_click_action: String,
 	/// Type of notification for Apple devices
-	pub fcm_apns_push_type: String,
+	pub apns_push_type: DeserializablePushType,
+	/// Usually the bundle ID of the app
+	pub apns_topic: String,
 	/// Maximum accepted length for NotificationRequests via push
 	///
 	/// Defaults to [Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT]
 	pub notification_request_body_size_limit: u64,
+}
+
+/// We need this to implement the Deserialize trait for PushType
+#[derive(Debug)]
+pub struct DeserializablePushType(pub PushType);
+
+impl<'de> Deserialize<'de> for DeserializablePushType {
+	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+	where
+		D: Deserializer<'de>,
+	{
+		let s = String::deserialize(deserializer)?.to_lowercase();
+
+		let push_type = match s.as_str() {
+            "alert" => PushType::Alert,
+            "background" => PushType::Background,
+            "location" => PushType::Location,
+            "voip" => PushType::Voip,
+            "fileprovider" => PushType::FileProvider,
+            "mdm" => PushType::Mdm,
+            "liveactivity" => PushType::LiveActivity,
+            "pushtotalk" => PushType::PushToTalk,
+            _ => return Err(de::Error::custom(format!(
+                "Unknown PushType: '{}'. Expected one of: Alert, Background, Location, Voip, FileProvider, Mdm, LiveActivity, PushToTalk",
+                s
+            ))),
+        };
+
+		Ok(DeserializablePushType(push_type))
+	}
 }
 
 /// Push gateway server configuration
