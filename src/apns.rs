@@ -32,7 +32,7 @@ use crate::error::{ErrCode, HedwigError};
 
 /// Trait for allowing the use of different senders for APNS messages
 /// Mainly this way to make testing possible
-// #[async_trait]
+#[async_trait]
 pub trait APNSSender<'a>: Debug {
 	/// Send off a message to APNS
 	async fn send(
@@ -79,7 +79,7 @@ impl APNSSenderImpl {
 	}
 }
 
-// #[async_trait]
+#[async_trait]
 impl<'a> APNSSender<'a> for APNSSenderImpl {
 	async fn send(
 		&self,

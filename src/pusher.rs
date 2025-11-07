@@ -28,7 +28,7 @@ use tokio::sync::Mutex;
 use tracing::debug;
 
 use crate::{
-	apns::{APNSSender, APNSSenderImpl},
+	apns::APNSSender,
 	error::{ErrCode, HedwigError},
 	fcm::FcmSender,
 	models::{ApnsHeaders, DataMessageType, Device, Notification},
@@ -122,7 +122,7 @@ pub async fn push_notification_fcm(
 pub async fn push_notification_apns(
 	notification: &Notification,
 	device: &Device,
-	sender: &APNSSenderImpl,
+	sender: &dyn for<'a> APNSSender<'a>,
 	settings: &Settings,
 ) -> Result<(), HedwigError> {
 	if !device.app_id.starts_with(&settings.hedwig.app_id) {
@@ -141,7 +141,7 @@ pub async fn push_notification_apns(
 
 	debug!("Pushing notification to {:?} device", device.data_message_type());
 
-	sender.send(builder.clone(), &device.pushkey).await?;
+	sender.send(builder, &device.pushkey).await?;
 
 	Ok(())
 }

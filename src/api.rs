@@ -34,7 +34,7 @@ use tower_http::{catch_panic::CatchPanicLayer, normalize_path::NormalizePathLaye
 use tracing::{debug, info, instrument};
 
 use crate::{
-	apns::{APNSSender, APNSSenderImpl},
+	apns::APNSSender,
 	fcm::FcmSender,
 	metrics::{metrics_handler, HttpMetricsMiddleware},
 	models::{Metrics, Notification, PushGatewayResponse},
@@ -46,7 +46,7 @@ use crate::{
 #[instrument]
 pub async fn matrix_push(
 	State(fcm_sender): State<Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>>,
-	State(apns_sender): State<Arc<APNSSenderImpl>>,
+	State(apns_sender): State<Arc<dyn APNSSender<'static> + Send + Sync>>,
 	State(settings): State<Arc<Settings>>,
 	State(counters): State<Arc<Metrics>>,
 	notification: Notification,
@@ -122,7 +122,7 @@ pub struct AppState {
 	fcm_sender: Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>,
 	/// [APNSSender] for communication with Apple Push Notification Service
 	/// Usually [crate::apns::APNSSenderImpl]
-	apns_sender: Arc<APNSSenderImpl>,
+	apns_sender: Arc<dyn APNSSender<'static> + Send + Sync>,
 	/// Hedwig [Settings]
 	settings: Arc<Settings>,
 	/// Prometheus [Metrics]
@@ -134,13 +134,13 @@ impl AppState {
 	#[must_use]
 	pub fn new(
 		fcm_sender: Box<dyn FcmSender + Send + Sync>,
-		apns_sender: APNSSenderImpl,
+		apns_sender: Box<dyn APNSSender<'static> + Send + Sync>,
 		settings: Settings,
 		counters: Metrics,
 	) -> Self {
 		AppState {
 			fcm_sender: Arc::new(Mutex::new(fcm_sender)),
-			apns_sender: Arc::new(apns_sender),
+			apns_sender: Arc::from(apns_sender),
 			settings: Arc::new(settings),
 			counters: Arc::new(counters),
 		}
@@ -180,11 +180,12 @@ pub fn create_router(
 }
 
 /// Sets up and runs the server
-pub async fn run_server(
+pub async fn run_server<T: APNSSender<'static> + Send + Sync + 'static>(
 	settings: Settings,
 	fcm_sender: Box<dyn FcmSender + Send + Sync>,
-	apns_sender: APNSSenderImpl,
+	apns_sender: T,
 ) -> Result<(), Report> {
+	let apns_sender: Box<dyn APNSSender<'static> + Send + Sync> = Box::new(apns_sender);
 	let addr: SocketAddr = (settings.server.bind_address, settings.server.port).into();
 
 	let registry = prometheus::Registry::new();
