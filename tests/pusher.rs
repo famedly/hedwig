@@ -49,9 +49,9 @@ use tokio::sync::mpsc;
 use tower::Service;
 
 #[derive(Debug)]
-struct FakeSender(mpsc::Sender<MessageBody>);
+struct FakeFcmSender(mpsc::Sender<MessageBody>);
 #[async_trait]
-impl FcmSender for FakeSender {
+impl FcmSender for FakeFcmSender {
 	async fn send(&self, message: MessageBody) -> Result<String, HedwigError> {
 		let should_fail = format!("{message:?}").contains("fcm_fail_pls");
 
@@ -236,7 +236,7 @@ async fn check_prom(
 #[tokio::test]
 async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx)))?;
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)))?;
 
 	let msg = json!({
 		"notification": {
@@ -257,7 +257,7 @@ async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx)))?;
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)))?;
 
 	let body = "I hate json";
 
@@ -281,7 +281,7 @@ async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx)))?;
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)))?;
 
 	let body_limit: usize =
 		Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT.try_into().unwrap();
@@ -311,7 +311,7 @@ async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx)))?;
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)))?;
 
 	for (clearing, platform, filename) in [
 		(true, Platform::Android, "tests/message_android_clearing.json"),
@@ -341,7 +341,7 @@ async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx)))?;
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)))?;
 
 	let dev = vec![get_device("com.famedly.🦊", Platform::IoS)];
 
@@ -356,7 +356,7 @@ async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeSender(tx)))?;
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)))?;
 
 	// Success
 	for clearing in [true, false] {

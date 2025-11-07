@@ -17,23 +17,37 @@
  */
 //! Tests for the api server.
 
+use a2::{DefaultNotificationBuilder, PushType};
 use async_trait::async_trait;
 use firebae_cm::MessageBody;
 use matrix_hedwig::{
 	api::run_server,
+	apns::APNSSender,
 	error::HedwigError,
 	fcm::FcmSender,
-	settings::{self, Settings},
+	settings::{self, DeserializablePushType, Settings},
 };
 use rust_telemetry::config::OtelConfig;
 use tokio::time;
 
 #[derive(Debug)]
-struct FakeSender;
+struct FakeFcmSender;
 #[async_trait]
-impl FcmSender for FakeSender {
+impl FcmSender for FakeFcmSender {
 	async fn send(&self, _message: MessageBody) -> Result<String, HedwigError> {
 		Ok("test".to_owned())
+	}
+}
+
+#[derive(Debug)]
+struct FakeAPNSSender;
+impl<'a> APNSSender<'a> for FakeAPNSSender {
+	async fn send(
+		&self,
+		_builder: DefaultNotificationBuilder<'a>,
+		_device_token: &str,
+	) -> Result<(), HedwigError> {
+		Ok(())
 	}
 }
 
@@ -54,7 +68,8 @@ fn create_test_settings(port: u16) -> Settings {
 		notification_click_action: "TEST_CLICK".to_owned(),
 		notification_request_body_size_limit:
 			Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
-		apns_push_type: "background".to_owned(),
+		apns_push_type: DeserializablePushType(PushType::Background),
+		apns_topic: "app.bundle.id".to_owned(),
 	};
 	Settings { log, server, hedwig, telemetry: OtelConfig::default() }
 }
@@ -63,9 +78,10 @@ fn create_test_settings(port: u16) -> Settings {
 async fn server_starts_successfully() -> Result<(), Box<dyn std::error::Error>> {
 	// Use a high port that's unlikely to be in use
 	let settings = create_test_settings(0);
-	let fcm_sender: Box<dyn FcmSender + Send + Sync> = Box::new(FakeSender);
+	let fcm_sender: Box<dyn FcmSender + Send + Sync> = Box::new(FakeFcmSender);
+	let apns_sender = FakeAPNSSender {};
 
-	let server_handle = tokio::spawn(run_server(settings, fcm_sender));
+	let server_handle = tokio::spawn(run_server(settings, fcm_sender, apns_sender));
 
 	// wait in case an error occurs during startup
 	time::sleep(time::Duration::from_secs(1)).await;
