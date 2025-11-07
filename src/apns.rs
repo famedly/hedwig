@@ -26,7 +26,6 @@ use a2::{
 	NotificationOptions, PushType,
 };
 use async_trait::async_trait;
-use tracing::error;
 
 use crate::error::{ErrCode, HedwigError};
 
@@ -99,14 +98,10 @@ impl<'a> APNSSender<'a> for APNSSenderImpl {
 			.await
 			.map_err(|e| HedwigError { errcode: ErrCode::APNSFailed, error: e.to_string() })?;
 
-		if response.error.is_some() {
-			error!(
-				"Failed sending notification to APNS: {}",
-				response.error.unwrap().reason.to_string()
-			);
+		if let Some(error) = response.error {
 			return Err(HedwigError {
 				errcode: ErrCode::APNSFailed,
-				error: "Failed sending notification to APNS".to_owned(),
+				error: format!("Failed sending notification to APNS: {}", error.reason),
 			});
 		}
 
