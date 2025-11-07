@@ -33,12 +33,14 @@ use axum::{
 };
 use color_eyre::Report;
 use firebae_cm::{FcmError, MessageBody};
+use a2::PushType;
 use matrix_hedwig::{
 	api::{create_router, AppState},
+	apns::APNSSender,
 	error::HedwigError,
 	fcm::FcmSender,
 	models::Metrics,
-	settings::{self, Settings},
+	settings::{self, DeserializablePushType, Settings},
 };
 use opentelemetry::{metrics::MeterProvider, KeyValue};
 use opentelemetry_sdk::{metrics::SdkMeterProvider, Resource};
@@ -69,6 +71,19 @@ impl FcmSender for FakeFcmSender {
 	}
 }
 
+#[derive(Debug)]
+struct FakeAPNSSender;
+#[async_trait]
+impl<'a> APNSSender<'a> for FakeAPNSSender {
+	async fn send(
+		&self,
+		_builder: a2::DefaultNotificationBuilder<'a>,
+		_device_token: &str,
+	) -> Result<(), HedwigError> {
+		Ok(())
+	}
+}
+
 fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, Report> {
 	let settings = {
 		let log = settings::Log { level: "DEBUG".to_owned() };
@@ -85,7 +100,8 @@ fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, 
 			notification_tag: "org.matrix.default_notification".to_owned(),
 			fcm_notification_android_channel_id: "org.matrix.app.message".to_owned(),
 			notification_click_action: "FLUTTER_NOTIFICATION_CLICK".to_owned(),
-			apns_push_type: "background".to_owned(),
+			apns_push_type: DeserializablePushType(PushType::Background),
+			apns_topic: "app.bundle.id".to_owned(),
 			notification_request_body_size_limit:
 				Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
 		};
@@ -106,7 +122,8 @@ fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, 
 
 	opentelemetry::global::set_meter_provider(provider);
 
-	let app_state = AppState::new(fcm_sender, settings, metrics);
+	let apns_sender: Box<dyn APNSSender<'static> + Send + Sync> = Box::new(FakeAPNSSender);
+	let app_state = AppState::new(fcm_sender, apns_sender, settings, metrics);
 
 	let router = create_router(app_state, Arc::new(registry))?;
 

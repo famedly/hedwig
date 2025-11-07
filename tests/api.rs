@@ -41,6 +41,7 @@ impl FcmSender for FakeFcmSender {
 
 #[derive(Debug)]
 struct FakeAPNSSender;
+#[async_trait]
 impl<'a> APNSSender<'a> for FakeAPNSSender {
 	async fn send(
 		&self,
