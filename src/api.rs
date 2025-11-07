@@ -37,7 +37,7 @@ use crate::{
 	apns::APNSSender,
 	fcm::FcmSender,
 	metrics::{metrics_handler, HttpMetricsMiddleware},
-	models::{Metrics, Notification, PushGatewayResponse},
+	models::{DataMessageType, Metrics, Notification, PushGatewayResponse},
 	pusher,
 	settings::Settings,
 };
@@ -64,9 +64,15 @@ pub async fn matrix_push(
 		let mut retry_time = Duration::from_millis(250);
 		let mut attempt = 0;
 		loop {
-			if let Err(e) =
-				pusher::push_notification_fcm(&notification, dev, &fcm_sender, &settings).await
-			{
+			if let Err(e) = match dev.data_message_type() {
+				DataMessageType::Ios => {
+					pusher::push_notification_apns(&notification, dev, &apns_sender, &settings)
+						.await
+				}
+				_ => {
+					pusher::push_notification_fcm(&notification, dev, &fcm_sender, &settings).await
+				}
+			} {
 				attempt += 1;
 				if attempt > settings.hedwig.fcm_push_max_retries {
 					info!(
