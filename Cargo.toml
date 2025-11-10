@@ -10,7 +10,7 @@ publish = false
 edition = "2021"
 
 [dependencies]
-a2 = "0.10.0"
+a2 = { version = "0.10.0", git = "https://github.com/famedly/a2.git", branch = "thomast/owned-struct-params" }
 async-trait = "0.1.89"
 axum = { version = "0.8.6", features = ["macros"] }
 axum-tracing-opentelemetry = "0.32.1"

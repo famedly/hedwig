@@ -32,11 +32,11 @@ use crate::error::{ErrCode, HedwigError};
 /// Trait for allowing the use of different senders for APNS messages
 /// Mainly this way to make testing possible
 #[async_trait]
-pub trait APNSSender<'a>: Debug {
+pub trait APNSSender: Debug {
 	/// Send off a message to APNS
 	async fn send(
 		&self,
-		builder: DefaultNotificationBuilder<'a>,
+		builder: DefaultNotificationBuilder,
 		device_token: &str,
 	) -> Result<(), HedwigError>;
 }
@@ -79,19 +79,19 @@ impl APNSSenderImpl {
 }
 
 #[async_trait]
-impl<'a> APNSSender<'a> for APNSSenderImpl {
+impl APNSSender for APNSSenderImpl {
 	async fn send(
 		&self,
-		builder: DefaultNotificationBuilder<'a>,
+		builder: DefaultNotificationBuilder,
 		device_token: &str,
 	) -> Result<(), HedwigError> {
 		let options = NotificationOptions {
-			apns_topic: Some(&self.topic),
+			apns_topic: Some(self.topic.clone()),
 			apns_push_type: Some(self.push_type),
 			..Default::default()
 		};
 
-		let payload = builder.build(device_token.as_ref(), options);
+		let payload = builder.build(device_token.to_owned(), options);
 		let response = self
 			.client
 			.send(payload)
