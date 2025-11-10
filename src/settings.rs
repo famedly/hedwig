@@ -51,6 +51,14 @@ pub struct Hedwig {
 	pub apns_push_type: DeserializablePushType,
 	/// Usually the bundle ID of the app
 	pub apns_topic: String,
+	/// Path to the APNs key file
+	pub apns_key_file_path: String,
+	/// Team ID of the APNs key
+	pub apns_team_id: String,
+	/// Key ID of the APNs key
+	pub apns_key_id: String,
+	/// Whether to use the sandbox environment
+	pub apns_sandbox: bool,
 	/// Maximum accepted length for NotificationRequests via push
 	///
 	/// Defaults to [Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT]

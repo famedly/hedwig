@@ -21,7 +21,7 @@
 
 use std::sync::Arc;
 
-use a2::DefaultNotificationBuilder;
+use a2::{DefaultNotificationBuilder, NotificationBuilder, NotificationOptions};
 use firebae_cm::{
 	self, AndroidConfig, AndroidMessagePriority, AndroidNotification, ApnsConfig, MessageBody,
 };
@@ -140,9 +140,17 @@ pub async fn push_notification_apns(
 		.set_badge(u32::from(count))
 		.set_mutable_content();
 
+	let options = NotificationOptions {
+		apns_topic: Some(sender.get_topic().to_owned()),
+		apns_push_type: Some(sender.get_push_type().to_owned()),
+		..Default::default()
+	};
+
+	let payload = builder.build(device.pushkey.clone(), options);
+
 	debug!("Pushing notification to {:?} device", device.data_message_type());
 
-	sender.send(builder, &device.pushkey).await?;
+	sender.send(payload).await?;
 
 	Ok(())
 }

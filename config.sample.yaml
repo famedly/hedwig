@@ -23,6 +23,11 @@ hedwig:
   fcm_notification_android_channel_id: "org.matrix.app.message"
   # https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types
   apns_push_type: background
+  apns_topic: app.bundle.id
+  apns_key_file_path: "path/to/apns_key.p8"
+  apns_team_id: "YOUR_TEAM_ID"
+  apns_key_id: "YOUR_KEY_ID"
+  apns_sandbox: true
   notification_request_body_size_limit: 15000
 
 # these are sample configuration options for the telemetry
