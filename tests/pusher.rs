@@ -22,7 +22,10 @@
 
 use std::sync::Arc;
 
-use a2::{request::payload::PayloadLike, NotificationBuilder, NotificationOptions, PushType};
+use a2::{
+	request::payload::{Payload, PayloadLike},
+	PushType,
+};
 use async_trait::async_trait;
 use axum::{
 	body::Body,
@@ -73,25 +76,14 @@ impl FcmSender for FakeFcmSender {
 
 #[derive(Debug)]
 struct FakeAPNSSender {
-	tx: mpsc::Sender<a2::request::payload::Payload>,
+	tx: mpsc::Sender<Payload>,
 	topic: String,
 	push_type: PushType,
 }
 #[async_trait]
 impl APNSSender for FakeAPNSSender {
-	async fn send(
-		&self,
-		builder: a2::DefaultNotificationBuilder,
-		device_token: &str,
-	) -> Result<(), HedwigError> {
-		let should_fail = device_token.contains("apns_fail_pls");
-
-		let options = NotificationOptions {
-			apns_topic: Some(self.topic.clone()),
-			apns_push_type: Some(self.push_type),
-			..Default::default()
-		};
-		let payload = builder.build(device_token.to_owned(), options);
+	async fn send(&self, payload: Payload) -> Result<(), HedwigError> {
+		let should_fail = payload.device_token.contains("apns_fail_pls");
 
 		self.tx.send(payload).await.unwrap();
 		if should_fail {
@@ -99,6 +91,12 @@ impl APNSSender for FakeAPNSSender {
 		} else {
 			Ok(())
 		}
+	}
+	fn get_topic(&self) -> &str {
+		&self.topic
+	}
+	fn get_push_type(&self) -> &PushType {
+		&self.push_type
 	}
 }
 
@@ -125,6 +123,10 @@ fn setup_server(
 			apns_topic: "app.bundle.id".to_owned(),
 			notification_request_body_size_limit:
 				Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
+			apns_key_file_path: "".to_owned(),
+			apns_key_id: "".to_owned(),
+			apns_team_id: "".to_owned(),
+			apns_sandbox: false,
 		};
 		Settings { log, server, hedwig, telemetry: OtelConfig::default() }
 	};
@@ -528,21 +530,29 @@ impl FcmSender for PanickingFcmSender {
 }
 
 #[derive(Debug)]
-struct PanickingAPNSSender;
+struct PanickingAPNSSender {
+	topic: String,
+	push_type: PushType,
+}
 #[async_trait]
 impl APNSSender for PanickingAPNSSender {
-	async fn send(
-		&self,
-		_builder: a2::DefaultNotificationBuilder,
-		_device_token: &str,
-	) -> Result<(), HedwigError> {
+	async fn send(&self, _payload: Payload) -> Result<(), HedwigError> {
 		panic!("Run for your lives!");
+	}
+	fn get_topic(&self) -> &str {
+		&self.topic
+	}
+	fn get_push_type(&self) -> &PushType {
+		&self.push_type
 	}
 }
 
 #[tokio::test]
 async fn panic_handler() -> Result<(), Box<dyn std::error::Error>> {
-	let mut service = setup_server(Box::new(PanickingFcmSender), Box::new(PanickingAPNSSender))?;
+	let mut service = setup_server(
+		Box::new(PanickingFcmSender),
+		Box::new(PanickingAPNSSender { topic: String::new(), push_type: PushType::Background }),
+	)?;
 
 	let body = serde_json::to_string(&test_message(
 		false,

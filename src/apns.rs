@@ -21,10 +21,7 @@
 
 use std::{fmt::Debug, fs::File};
 
-use a2::{
-	Client, ClientConfig, DefaultNotificationBuilder, Endpoint, NotificationBuilder,
-	NotificationOptions, PushType,
-};
+use a2::{request::payload::Payload, Client, ClientConfig, Endpoint, PushType};
 use async_trait::async_trait;
 
 use crate::error::{ErrCode, HedwigError};
@@ -34,11 +31,13 @@ use crate::error::{ErrCode, HedwigError};
 #[async_trait]
 pub trait APNSSender: Debug {
 	/// Send off a message to APNS
-	async fn send(
-		&self,
-		builder: DefaultNotificationBuilder,
-		device_token: &str,
-	) -> Result<(), HedwigError>;
+	async fn send(&self, payload: Payload) -> Result<(), HedwigError>;
+	// those getters basically just force the underlying struct
+	// to have the topic and push type attributes
+	/// Get the topic
+	fn get_topic(&self) -> &str;
+	/// Get the push type
+	fn get_push_type(&self) -> &PushType;
 }
 
 /// Default implementation for FcmSender
@@ -54,12 +53,14 @@ pub struct APNSSenderImpl {
 
 impl APNSSenderImpl {
 	/// Create new APNS sender from the path to an APNS private key (.p8 file)
-	pub fn new(topic: String, push_type: PushType) -> Result<Self, HedwigError> {
-		let key_file = String::new();
-		let team_id = String::new();
-		let key_id = String::new();
-		let sandbox = false;
-
+	pub fn new(
+		topic: String,
+		push_type: PushType,
+		key_file: String,
+		team_id: String,
+		key_id: String,
+		sandbox: bool,
+	) -> Result<Self, HedwigError> {
 		let mut private_key = File::open(key_file).map_err(|e| HedwigError {
 			error: e.to_string(),
 			errcode: ErrCode::APNSPrivateKeyNotFound,
@@ -80,18 +81,7 @@ impl APNSSenderImpl {
 
 #[async_trait]
 impl APNSSender for APNSSenderImpl {
-	async fn send(
-		&self,
-		builder: DefaultNotificationBuilder,
-		device_token: &str,
-	) -> Result<(), HedwigError> {
-		let options = NotificationOptions {
-			apns_topic: Some(self.topic.clone()),
-			apns_push_type: Some(self.push_type),
-			..Default::default()
-		};
-
-		let payload = builder.build(device_token.to_owned(), options);
+	async fn send(&self, payload: Payload) -> Result<(), HedwigError> {
 		let response = self
 			.client
 			.send(payload)
@@ -106,5 +96,13 @@ impl APNSSender for APNSSenderImpl {
 		}
 
 		Ok(())
+	}
+
+	fn get_topic(&self) -> &str {
+		&self.topic
+	}
+
+	fn get_push_type(&self) -> &PushType {
+		&self.push_type
 	}
 }

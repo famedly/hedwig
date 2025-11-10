@@ -17,7 +17,7 @@
  */
 //! Tests for the api server.
 
-use a2::{DefaultNotificationBuilder, PushType};
+use a2::{request::payload::Payload, PushType};
 use async_trait::async_trait;
 use firebae_cm::MessageBody;
 use matrix_hedwig::{
@@ -40,15 +40,20 @@ impl FcmSender for FakeFcmSender {
 }
 
 #[derive(Debug)]
-struct FakeAPNSSender;
+struct FakeAPNSSender {
+	topic: String,
+	push_type: PushType,
+}
 #[async_trait]
 impl APNSSender for FakeAPNSSender {
-	async fn send(
-		&self,
-		_builder: DefaultNotificationBuilder,
-		_device_token: &str,
-	) -> Result<(), HedwigError> {
+	async fn send(&self, _payload: Payload) -> Result<(), HedwigError> {
 		Ok(())
+	}
+	fn get_topic(&self) -> &str {
+		&self.topic
+	}
+	fn get_push_type(&self) -> &PushType {
+		&self.push_type
 	}
 }
 
@@ -71,6 +76,10 @@ fn create_test_settings(port: u16) -> Settings {
 			Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
 		apns_push_type: DeserializablePushType(PushType::Background),
 		apns_topic: "app.bundle.id".to_owned(),
+		apns_key_file_path: "".to_owned(),
+		apns_team_id: "TEAM_ID".to_owned(),
+		apns_key_id: "KEY_ID".to_owned(),
+		apns_sandbox: false,
 	};
 	Settings { log, server, hedwig, telemetry: OtelConfig::default() }
 }
@@ -80,7 +89,8 @@ async fn server_starts_successfully() -> Result<(), Box<dyn std::error::Error>> 
 	// Use a high port that's unlikely to be in use
 	let settings = create_test_settings(0);
 	let fcm_sender: Box<dyn FcmSender + Send + Sync> = Box::new(FakeFcmSender);
-	let apns_sender = FakeAPNSSender {};
+	let apns_sender =
+		FakeAPNSSender { topic: "app.bundle.id".to_owned(), push_type: PushType::Background };
 
 	let server_handle = tokio::spawn(run_server(settings, fcm_sender, apns_sender));
 
