@@ -42,10 +42,10 @@ impl FcmSender for FakeFcmSender {
 #[derive(Debug)]
 struct FakeAPNSSender;
 #[async_trait]
-impl<'a> APNSSender<'a> for FakeAPNSSender {
+impl APNSSender for FakeAPNSSender {
 	async fn send(
 		&self,
-		_builder: DefaultNotificationBuilder<'a>,
+		_builder: DefaultNotificationBuilder,
 		_device_token: &str,
 	) -> Result<(), HedwigError> {
 		Ok(())
