@@ -5,8 +5,7 @@ version = 4
 [[package]]
 name = "a2"
 version = "0.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f279fc8b1f1a64138f0f4b9cda9be488ae35bc2f8556c7ffe60730f1c07d005a"
+source = "git+https://github.com/famedly/a2.git?branch=thomast%2Fowned-struct-params#4462584555a766229ae63e0f45ac59556b283960"
 dependencies = [
  "base64 0.21.7",
  "erased-serde 0.3.31",

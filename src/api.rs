@@ -46,7 +46,7 @@ use crate::{
 #[instrument]
 pub async fn matrix_push(
 	State(fcm_sender): State<Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>>,
-	State(apns_sender): State<Arc<dyn APNSSender<'static> + Send + Sync>>,
+	State(apns_sender): State<Arc<dyn APNSSender + Send + Sync>>,
 	State(settings): State<Arc<Settings>>,
 	State(counters): State<Arc<Metrics>>,
 	notification: Notification,
@@ -128,7 +128,7 @@ pub struct AppState {
 	fcm_sender: Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>,
 	/// [APNSSender] for communication with Apple Push Notification Service
 	/// Usually [crate::apns::APNSSenderImpl]
-	apns_sender: Arc<dyn APNSSender<'static> + Send + Sync>,
+	apns_sender: Arc<dyn APNSSender + Send + Sync>,
 	/// Hedwig [Settings]
 	settings: Arc<Settings>,
 	/// Prometheus [Metrics]
@@ -140,7 +140,7 @@ impl AppState {
 	#[must_use]
 	pub fn new(
 		fcm_sender: Box<dyn FcmSender + Send + Sync>,
-		apns_sender: Box<dyn APNSSender<'static> + Send + Sync>,
+		apns_sender: Box<dyn APNSSender + Send + Sync>,
 		settings: Settings,
 		counters: Metrics,
 	) -> Self {
@@ -186,12 +186,12 @@ pub fn create_router(
 }
 
 /// Sets up and runs the server
-pub async fn run_server<T: APNSSender<'static> + Send + Sync + 'static>(
+pub async fn run_server<T: APNSSender + Send + Sync + 'static>(
 	settings: Settings,
 	fcm_sender: Box<dyn FcmSender + Send + Sync>,
 	apns_sender: T,
 ) -> Result<(), Report> {
-	let apns_sender: Box<dyn APNSSender<'static> + Send + Sync> = Box::new(apns_sender);
+	let apns_sender: Box<dyn APNSSender + Send + Sync> = Box::new(apns_sender);
 	let addr: SocketAddr = (settings.server.bind_address, settings.server.port).into();
 
 	let registry = prometheus::Registry::new();

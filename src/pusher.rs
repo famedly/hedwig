@@ -19,6 +19,8 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+use std::sync::Arc;
+
 use a2::DefaultNotificationBuilder;
 use firebae_cm::{
 	self, AndroidConfig, AndroidMessagePriority, AndroidNotification, ApnsConfig, MessageBody,
@@ -122,7 +124,7 @@ pub async fn push_notification_fcm(
 pub async fn push_notification_apns(
 	notification: &Notification,
 	device: &Device,
-	sender: &dyn for<'a> APNSSender<'a>,
+	sender: &Arc<dyn APNSSender + Send + Sync>,
 	settings: &Settings,
 ) -> Result<(), HedwigError> {
 	if !device.app_id.starts_with(&settings.hedwig.app_id) {
@@ -132,9 +134,9 @@ pub async fn push_notification_apns(
 	let count = notification.counts.as_ref().and_then(|c| c.unread).unwrap_or_default();
 
 	let builder = DefaultNotificationBuilder::new()
-		.set_body(&settings.hedwig.notification_body)
-		.set_sound(&settings.hedwig.notification_sound)
-		.set_title(&settings.hedwig.notification_title)
+		.set_body(settings.hedwig.notification_body.clone())
+		.set_sound(settings.hedwig.notification_sound.clone())
+		.set_title(settings.hedwig.notification_title.clone())
 		.set_badge(u32::from(count))
 		.set_mutable_content()
 		.set_badge(1_u32);
