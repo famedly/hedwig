@@ -22,6 +22,7 @@
 
 use std::sync::Arc;
 
+use a2::PushType;
 use async_trait::async_trait;
 use axum::{
 	body::Body,
@@ -33,11 +34,10 @@ use axum::{
 };
 use color_eyre::Report;
 use firebae_cm::{FcmError, MessageBody};
-use a2::PushType;
 use matrix_hedwig::{
 	api::{create_router, AppState},
 	apns::APNSSender,
-	error::HedwigError,
+	error::{ErrCode, HedwigError},
 	fcm::FcmSender,
 	models::Metrics,
 	settings::{self, DeserializablePushType, Settings},
@@ -74,17 +74,27 @@ impl FcmSender for FakeFcmSender {
 #[derive(Debug)]
 struct FakeAPNSSender;
 #[async_trait]
-impl<'a> APNSSender<'a> for FakeAPNSSender {
+impl APNSSender for FakeAPNSSender {
 	async fn send(
 		&self,
-		_builder: a2::DefaultNotificationBuilder<'a>,
-		_device_token: &str,
+		_builder: a2::DefaultNotificationBuilder,
+		device_token: &str,
 	) -> Result<(), HedwigError> {
-		Ok(())
+		let should_fail = device_token.contains("apns_fail_pls");
+
+		// self.0.send(message).await.unwrap();
+		if should_fail {
+			Err(HedwigError { error: "Bad Request".to_owned(), errcode: ErrCode::APNSFailed })
+		} else {
+			Ok(())
+		}
 	}
 }
 
-fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, Report> {
+fn setup_server(
+	fcm_sender: Box<dyn FcmSender + Send + Sync>,
+	apns_sender: Box<dyn APNSSender + Send + Sync>,
+) -> Result<Router, Report> {
 	let settings = {
 		let log = settings::Log { level: "DEBUG".to_owned() };
 
@@ -122,7 +132,6 @@ fn setup_server(fcm_sender: Box<dyn FcmSender + Send + Sync>) -> Result<Router, 
 
 	opentelemetry::global::set_meter_provider(provider);
 
-	let apns_sender: Box<dyn APNSSender<'static> + Send + Sync> = Box::new(FakeAPNSSender);
 	let app_state = AppState::new(fcm_sender, apns_sender, settings, metrics);
 
 	let router = create_router(app_state, Arc::new(registry))?;
@@ -253,15 +262,36 @@ async fn check_prom(
 #[tokio::test]
 async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeFcmSender(tx)))?;
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)), Box::new(FakeAPNSSender))?;
 
 	let msg = json!({
 		"notification": {
 			"counts": {
 				"unread": 1337_i32
 			},
-			"devices": [get_device("com.famedly.🦊", Platform::IoS)],
+			"devices": [get_device("com.famedly.🦊", Platform::Android)],
 			"room_id": "fcm_fail_pls",
+			"event-id": "uwu",
+			"prio": "high"
+		}
+	});
+	assert_eq!("{\"rejected\":[\"Android\"]}", run_request(&mut service, msg).await?);
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn apns_failure() -> Result<(), Box<dyn std::error::Error>> {
+	let (tx, mut _rx) = mpsc::channel(1337);
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)), Box::new(FakeAPNSSender))?;
+
+	let msg = json!({
+		"notification": {
+			"counts": {
+				"unread": 1337_i32
+			},
+			"devices": [get_device("apns_fail_pls", Platform::IoS)],
+			"room_id": "whatever",
 			"event-id": "uwu",
 			"prio": "high"
 		}
@@ -274,7 +304,7 @@ async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeFcmSender(tx)))?;
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)), Box::new(FakeAPNSSender))?;
 
 	let body = "I hate json";
 
@@ -298,7 +328,7 @@ async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, _rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeFcmSender(tx)))?;
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)), Box::new(FakeAPNSSender))?;
 
 	let body_limit: usize =
 		Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT.try_into().unwrap();
@@ -328,7 +358,7 @@ async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeFcmSender(tx)))?;
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)), Box::new(FakeAPNSSender))?;
 
 	for (clearing, platform, filename) in [
 		(true, Platform::Android, "tests/message_android_clearing.json"),
@@ -358,7 +388,7 @@ async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeFcmSender(tx)))?;
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)), Box::new(FakeAPNSSender))?;
 
 	let dev = vec![get_device("com.famedly.🦊", Platform::IoS)];
 
@@ -373,7 +403,7 @@ async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 	let (tx, mut rx) = mpsc::channel(1337);
-	let mut service = setup_server(Box::new(FakeFcmSender(tx)))?;
+	let mut service = setup_server(Box::new(FakeFcmSender(tx)), Box::new(FakeAPNSSender))?;
 
 	// Success
 	for clearing in [true, false] {
@@ -413,17 +443,30 @@ async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[derive(Debug)]
-struct PanickingSender;
+struct PanickingFcmSender;
 #[async_trait]
-impl FcmSender for PanickingSender {
+impl FcmSender for PanickingFcmSender {
 	async fn send(&self, _message: MessageBody) -> Result<String, HedwigError> {
+		panic!("Run for your lives!");
+	}
+}
+
+#[derive(Debug)]
+struct PanickingAPNSSender;
+#[async_trait]
+impl APNSSender for PanickingAPNSSender {
+	async fn send(
+		&self,
+		_builder: a2::DefaultNotificationBuilder,
+		_device_token: &str,
+	) -> Result<(), HedwigError> {
 		panic!("Run for your lives!");
 	}
 }
 
 #[tokio::test]
 async fn panic_handler() -> Result<(), Box<dyn std::error::Error>> {
-	let mut service = setup_server(Box::new(PanickingSender))?;
+	let mut service = setup_server(Box::new(PanickingFcmSender), Box::new(PanickingAPNSSender))?;
 
 	let body = serde_json::to_string(&test_message(
 		false,
