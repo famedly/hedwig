@@ -138,8 +138,7 @@ pub async fn push_notification_apns(
 		.set_sound(settings.hedwig.notification_sound.clone())
 		.set_title(settings.hedwig.notification_title.clone())
 		.set_badge(u32::from(count))
-		.set_mutable_content()
-		.set_badge(1_u32);
+		.set_mutable_content();
 
 	debug!("Pushing notification to {:?} device", device.data_message_type());
 
