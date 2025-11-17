@@ -111,8 +111,36 @@ pub async fn push_notification_fcm(
 			body.android(android_config);
 			body.apns(ios_config);
 		}
-		// we should never end up here as this case is handled by push_notification_apns
-		DataMessageType::Ios => {}
+		DataMessageType::Ios => {
+			// Used for background notification handling on iOS, if enabled by the app
+
+			// If there's no room_id then this is a badge only notification that must not
+			// have any notification content
+			if notification.room_id.is_some() {
+				// If apple decide not to run the service extension there needs to be a fallback
+				// notification
+				body.notification(fcm_notification);
+			}
+
+			body.data(notification.data(device)?)?;
+
+			let mut ios_config = ApnsConfig::new();
+			ios_config.payload(json!({
+				"aps": {
+					"mutable-content": 1,
+					"badge": count,
+					"sound": settings.hedwig.notification_sound
+				}
+			}))?;
+
+			// Priority needs to be 5 for the service extension to be used
+			ios_config.headers(ApnsHeaders {
+				apns_priority: "5".to_owned(),
+				apns_push_type: settings.hedwig.apns_push_type.0.to_string(),
+			})?;
+
+			body.apns(ios_config);
+		}
 	};
 
 	sender.lock().await.send(body).await?;

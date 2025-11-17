@@ -37,7 +37,7 @@ use crate::{
 	apns::APNSSender,
 	fcm::FcmSender,
 	metrics::{metrics_handler, HttpMetricsMiddleware},
-	models::{DataMessageType, Metrics, Notification, PushGatewayResponse},
+	models::{Metrics, Notification, PushGatewayResponse},
 	pusher,
 	settings::Settings,
 };
@@ -64,8 +64,8 @@ pub async fn matrix_push(
 		let mut retry_time = Duration::from_millis(250);
 		let mut attempt = 0;
 		loop {
-			if let Err(e) = match dev.data_message_type() {
-				DataMessageType::Ios => {
+			if let Err(e) = match dev.use_direct_apns {
+				Some(true) => {
 					pusher::push_notification_apns(&notification, dev, &apns_sender, &settings)
 						.await
 				}

@@ -49,7 +49,7 @@ use opentelemetry::{metrics::MeterProvider, KeyValue};
 use opentelemetry_sdk::{metrics::SdkMeterProvider, Resource};
 use regex::Regex;
 use rust_telemetry::config::OtelConfig;
-use serde_json::json;
+use serde_json::{json, Value};
 use tokio::sync::mpsc;
 use tower::Service;
 
@@ -152,7 +152,7 @@ fn setup_server(
 	Ok(router)
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum Platform {
 	Android,
 	AndroidLegacy,
@@ -160,7 +160,7 @@ enum Platform {
 	Generic,
 }
 
-fn get_device(app_id: &str, platform: Platform) -> serde_json::Value {
+fn get_device(app_id: &str, platform: Platform, use_direct_apns: bool) -> Value {
 	let (app_id, data) = match platform {
 		Platform::Android => (
 			app_id.to_owned(),
@@ -194,15 +194,21 @@ fn get_device(app_id: &str, platform: Platform) -> serde_json::Value {
 		),
 	};
 
-	json!({
+	let mut device = json!({
 		"app_id": app_id,
 		"data": data,
 		"pushkey": format!("{platform:?}"),
-		"pushkey_ts": 1_655_896_032_i32
-	})
+		"pushkey_ts": 1_655_896_032_i32,
+	});
+
+	if matches!(platform, Platform::IoS) {
+		device["use_direct_apns"] = json!(use_direct_apns);
+	}
+
+	device
 }
 
-fn test_message(clearing: bool, devices: Vec<serde_json::Value>) -> serde_json::Value {
+fn test_message(clearing: bool, devices: Vec<Value>) -> Value {
 	if !clearing {
 		json!({
 			"notification": {
@@ -242,7 +248,7 @@ async fn response_to_string(
 
 async fn run_request(
 	service: &mut Router,
-	body: serde_json::Value,
+	body: Value,
 ) -> Result<String, Box<dyn std::error::Error>> {
 	let body = serde_json::to_string(&body)?;
 
@@ -290,7 +296,7 @@ async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 			"counts": {
 				"unread": 1337_i32
 			},
-			"devices": [get_device("com.famedly.🦊", Platform::Android)],
+			"devices": [get_device("com.famedly.🦊", Platform::Android, false)],
 			"room_id": "fcm_fail_pls",
 			"event-id": "uwu",
 			"prio": "high"
@@ -302,7 +308,7 @@ async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::test]
-async fn apns_failure() -> Result<(), Box<dyn std::error::Error>> {
+async fn apns_through_fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
 	let (apns_tx, mut _apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
@@ -319,7 +325,36 @@ async fn apns_failure() -> Result<(), Box<dyn std::error::Error>> {
 			"counts": {
 				"unread": 1337_i32
 			},
-			"devices": [get_device("apns_fail_pls", Platform::IoS)],
+			"devices": [get_device("apns_fail_pls", Platform::IoS, false)],
+			"room_id": "whatever",
+			"event-id": "uwu",
+			"prio": "high"
+		}
+	});
+	assert_eq!("{\"rejected\":[\"IoS\"]}", run_request(&mut service, msg).await?);
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn direct_apns_failure() -> Result<(), Box<dyn std::error::Error>> {
+	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, mut _apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Box::new(FakeAPNSSender {
+			tx: apns_tx,
+			topic: "app.bundle.id".to_owned(),
+			push_type: PushType::Background,
+		}),
+	)?;
+
+	let msg = json!({
+		"notification": {
+			"counts": {
+				"unread": 1337_i32
+			},
+			"devices": [get_device("apns_fail_pls", Platform::IoS, true)],
 			"room_id": "whatever",
 			"event-id": "uwu",
 			"prio": "high"
@@ -379,7 +414,7 @@ async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 		Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT.try_into().unwrap();
 	let too_long_content = format!("com.famedly.{}", "🐉".repeat(body_limit));
 
-	let device = vec![get_device(&too_long_content, Platform::Android)];
+	let device = vec![get_device(&too_long_content, Platform::Android, false)];
 	let too_long_message = test_message(false, device);
 	let body = serde_json::to_string(&too_long_message)?;
 
@@ -413,24 +448,29 @@ async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 		}),
 	)?;
 
-	for (clearing, platform, filename) in [
-		(true, Platform::Android, "tests/message_android_clearing.json"),
-		(false, Platform::Android, "tests/message_android.json"),
-		(true, Platform::AndroidLegacy, "tests/message_android_legacy_clearing.json"),
-		(false, Platform::AndroidLegacy, "tests/message_android_legacy.json"),
-		(true, Platform::Generic, "tests/message_generic_clearing.json"),
-		(false, Platform::Generic, "tests/message_generic.json"),
-		(true, Platform::IoS, "tests/message_ios_clearing.json"),
-		(false, Platform::IoS, "tests/message_ios.json"),
+	for (clearing, platform, filename, use_direct_apns) in [
+		(true, Platform::Android, "tests/message_android_clearing.json", false),
+		(false, Platform::Android, "tests/message_android.json", false),
+		(true, Platform::AndroidLegacy, "tests/message_android_legacy_clearing.json", false),
+		(false, Platform::AndroidLegacy, "tests/message_android_legacy.json", false),
+		(true, Platform::Generic, "tests/message_generic_clearing.json", false),
+		(false, Platform::Generic, "tests/message_generic.json", false),
+		(true, Platform::IoS, "tests/message_ios_fcm_clearing.json", false),
+		(false, Platform::IoS, "tests/message_ios_fcm.json", false),
+		(true, Platform::IoS, "tests/message_ios_direct_apns_clearing.json", true),
+		(false, Platform::IoS, "tests/message_ios_direct_apns.json", true),
 	] {
 		let resp = run_request(
 			&mut service,
-			test_message(clearing, vec![get_device("com.famedly.🦊", platform.clone())]),
+			test_message(
+				clearing,
+				vec![get_device("com.famedly.🦊", platform.clone(), use_direct_apns)],
+			),
 		)
 		.await?;
 
-		let posted_message = match platform {
-			Platform::IoS => apns_rx.recv().await.unwrap().to_json_string()?,
+		let posted_message = match use_direct_apns {
+			true => apns_rx.recv().await.unwrap().to_json_string()?,
 			_ => serde_json::to_string(&fcm_rx.recv().await.unwrap())?,
 		};
 
@@ -445,7 +485,7 @@ async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::test]
 async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
-	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
+	let (fcm_tx, mut fcm_rx) = mpsc::channel(1337);
 	let (apns_tx, mut apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
 		Box::new(FakeFcmSender(fcm_tx)),
@@ -456,11 +496,20 @@ async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 		}),
 	)?;
 
-	let dev = vec![get_device("com.famedly.🦊", Platform::IoS)];
+	// with apns
+	let dev = vec![get_device("com.famedly.🦊", Platform::IoS, true)];
 
 	for _ in 1..100 {
 		run_request(&mut service, test_message(false, dev.clone())).await?;
 		apns_rx.recv().await.unwrap();
+	}
+
+	// with fcm
+	let dev = vec![get_device("com.famedly.🦊", Platform::IoS, false)];
+
+	for _ in 1..100 {
+		run_request(&mut service, test_message(false, dev.clone())).await?;
+		fcm_rx.recv().await.unwrap();
 	}
 
 	Ok(())
@@ -469,7 +518,7 @@ async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 #[tokio::test]
 async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 	let (fcm_tx, mut fcm_rx) = mpsc::channel(1337);
-	let (apns_tx, mut apns_rx) = mpsc::channel(1337);
+	let (apns_tx, _apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
 		Box::new(FakeFcmSender(fcm_tx)),
 		Box::new(FakeAPNSSender {
@@ -483,35 +532,32 @@ async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 	for clearing in [true, false] {
 		let devices =
 			[Platform::Android, Platform::AndroidLegacy, Platform::IoS, Platform::Generic]
-				.map(|platform| get_device("com.famedly.🦊", platform))
+				.map(|platform| get_device("com.famedly.🦊", platform, false))
 				.to_vec();
 
 		let resp = run_request(&mut service, test_message(clearing, devices)).await?;
 		assert_eq!(&resp, "{\"rejected\":[]}");
 
-		for (platform, filename) in [
+		for (_, filename) in [
 			(Platform::Android, "tests/message_android"),
 			(Platform::AndroidLegacy, "tests/message_android_legacy"),
-			(Platform::IoS, "tests/message_ios"),
+			(Platform::IoS, "tests/message_ios_fcm"),
 			(Platform::Generic, "tests/message_generic"),
 		]
 		.map(|(p, n)| {
 			(p, if clearing { format!("{n}_clearing.json") } else { format!("{n}.json") })
 		}) {
-			let posted_message = match platform {
-				Platform::IoS => apns_rx.recv().await.unwrap().to_json_string()?,
-				_ => serde_json::to_string(&fcm_rx.recv().await.unwrap())?,
-			};
+			let posted_message = serde_json::to_string(&fcm_rx.recv().await.unwrap())?;
 			assert_eq!(posted_message, std::fs::read_to_string(filename)?.trim_end());
 		}
 	}
 
 	// Partial failure
 	let devices = vec![
-		get_device("com.famedly.🐾", Platform::AndroidLegacy),
-		get_device("com.famedly.🦊", Platform::Android),
-		get_device("com.famedly.🐾", Platform::Generic),
-		get_device("com.famedly.🦊", Platform::IoS),
+		get_device("com.famedly.🐾", Platform::AndroidLegacy, false),
+		get_device("com.famedly.🦊", Platform::Android, false),
+		get_device("com.famedly.🐾", Platform::Generic, false),
+		get_device("com.famedly.🦊", Platform::IoS, false),
 	];
 	let resp = run_request(&mut service, test_message(true, devices)).await?;
 	assert_eq!(&resp, "{\"rejected\":[\"AndroidLegacy\",\"Generic\"]}");
@@ -556,7 +602,7 @@ async fn panic_handler() -> Result<(), Box<dyn std::error::Error>> {
 
 	let body = serde_json::to_string(&test_message(
 		false,
-		vec![get_device("com.famedly.🦊", Platform::IoS)],
+		vec![get_device("com.famedly.🦊", Platform::IoS, false)],
 	))?;
 	let resp = service
 		.call(
