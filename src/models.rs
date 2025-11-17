@@ -70,6 +70,8 @@ pub struct Device {
 	/// A dictionary of customisations made to the way this notification is to
 	/// be presented.
 	pub tweaks: Option<serde_json::Value>,
+	/// Whether to use fcm or apns for iOS notifications
+	pub use_direct_apns: Option<bool>,
 }
 
 /// What kind of data message should be sent (if any)
