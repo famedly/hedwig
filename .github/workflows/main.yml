@@ -14,5 +14,5 @@ jobs:
         with:
           # You can target a repository in a different organization
           # to the issue
-          project-url: https://github.com/orgs/famedly/projects/4
+          project-url: https://github.com/orgs/famedly/projects/52
           github-token: ${{ secrets.ADD_ISSUE_TO_PROJECT_PAT }}
