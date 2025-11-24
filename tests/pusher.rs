@@ -102,7 +102,7 @@ impl APNSSender for FakeAPNSSender {
 
 fn setup_server(
 	fcm_sender: Box<dyn FcmSender + Send + Sync>,
-	apns_sender: Box<dyn APNSSender + Send + Sync>,
+	apns_sender: Option<Box<dyn APNSSender + Send + Sync>>,
 ) -> Result<Router, Report> {
 	let settings = {
 		let log = settings::Log { level: "DEBUG".to_owned() };
@@ -284,11 +284,11 @@ async fn fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 	let (apns_tx, mut _apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
 		Box::new(FakeFcmSender(fcm_tx)),
-		Box::new(FakeAPNSSender {
+		Some(Box::new(FakeAPNSSender {
 			tx: apns_tx,
 			topic: "app.bundle.id".to_owned(),
 			push_type: PushType::Background,
-		}),
+		})),
 	)?;
 
 	let msg = json!({
@@ -313,11 +313,11 @@ async fn apns_through_fcm_failure() -> Result<(), Box<dyn std::error::Error>> {
 	let (apns_tx, mut _apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
 		Box::new(FakeFcmSender(fcm_tx)),
-		Box::new(FakeAPNSSender {
+		Some(Box::new(FakeAPNSSender {
 			tx: apns_tx,
 			topic: "app.bundle.id".to_owned(),
 			push_type: PushType::Background,
-		}),
+		})),
 	)?;
 
 	let msg = json!({
@@ -342,11 +342,11 @@ async fn direct_apns_failure() -> Result<(), Box<dyn std::error::Error>> {
 	let (apns_tx, mut _apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
 		Box::new(FakeFcmSender(fcm_tx)),
-		Box::new(FakeAPNSSender {
+		Some(Box::new(FakeAPNSSender {
 			tx: apns_tx,
 			topic: "app.bundle.id".to_owned(),
 			push_type: PushType::Background,
-		}),
+		})),
 	)?;
 
 	let msg = json!({
@@ -371,11 +371,11 @@ async fn bad_json() -> Result<(), Box<dyn std::error::Error>> {
 	let (apns_tx, mut _apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
 		Box::new(FakeFcmSender(fcm_tx)),
-		Box::new(FakeAPNSSender {
+		Some(Box::new(FakeAPNSSender {
 			tx: apns_tx,
 			topic: "app.bundle.id".to_owned(),
 			push_type: PushType::Background,
-		}),
+		})),
 	)?;
 
 	let body = "I hate json";
@@ -403,11 +403,11 @@ async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 	let (apns_tx, _apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
 		Box::new(FakeFcmSender(fcm_tx)),
-		Box::new(FakeAPNSSender {
+		Some(Box::new(FakeAPNSSender {
 			tx: apns_tx,
 			topic: "app.bundle.id".to_owned(),
 			push_type: PushType::Background,
-		}),
+		})),
 	)?;
 
 	let body_limit: usize =
@@ -441,11 +441,11 @@ async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 	let (apns_tx, mut apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
 		Box::new(FakeFcmSender(fcm_tx)),
-		Box::new(FakeAPNSSender {
+		Some(Box::new(FakeAPNSSender {
 			tx: apns_tx,
 			topic: "app.bundle.id".to_owned(),
 			push_type: PushType::Background,
-		}),
+		})),
 	)?;
 
 	for (clearing, platform, filename, use_direct_apns) in [
@@ -489,11 +489,11 @@ async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 	let (apns_tx, mut apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
 		Box::new(FakeFcmSender(fcm_tx)),
-		Box::new(FakeAPNSSender {
+		Some(Box::new(FakeAPNSSender {
 			tx: apns_tx,
 			topic: "app.bundle.id".to_owned(),
 			push_type: PushType::Background,
-		}),
+		})),
 	)?;
 
 	// with apns
@@ -521,11 +521,11 @@ async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 	let (apns_tx, _apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
 		Box::new(FakeFcmSender(fcm_tx)),
-		Box::new(FakeAPNSSender {
+		Some(Box::new(FakeAPNSSender {
 			tx: apns_tx,
 			topic: "app.bundle.id".to_owned(),
 			push_type: PushType::Background,
-		}),
+		})),
 	)?;
 
 	// Success
@@ -597,7 +597,10 @@ impl APNSSender for PanickingAPNSSender {
 async fn panic_handler() -> Result<(), Box<dyn std::error::Error>> {
 	let mut service = setup_server(
 		Box::new(PanickingFcmSender),
-		Box::new(PanickingAPNSSender { topic: String::new(), push_type: PushType::Background }),
+		Some(Box::new(PanickingAPNSSender {
+			topic: String::new(),
+			push_type: PushType::Background,
+		})),
 	)?;
 
 	let body = serde_json::to_string(&test_message(

@@ -45,16 +45,20 @@ async fn main() -> Result<(), Report> {
 	info!("Launching with settings: {:?}", settings);
 
 	let fcm_auth = FcmSenderImpl::new().await.wrap_err("Fcm authentication failed")?;
-	let apns_auth = APNSSenderImpl::new(
-		settings.hedwig.apns_topic.clone(),
-		settings.hedwig.apns_push_type.0,
-		settings.hedwig.apns_key_file_path.clone(),
-		settings.hedwig.apns_team_id.clone(),
-		settings.hedwig.apns_key_id.clone(),
-		settings.hedwig.apns_sandbox,
-	)
-	.wrap_err("APNS authentication failed")?;
-
+	let apns_auth = match settings.hedwig.apns_key_file_path.is_empty() {
+		false => Some(
+			APNSSenderImpl::new(
+				settings.hedwig.apns_topic.clone(),
+				settings.hedwig.apns_push_type.0,
+				settings.hedwig.apns_key_file_path.clone(),
+				settings.hedwig.apns_team_id.clone(),
+				settings.hedwig.apns_key_id.clone(),
+				settings.hedwig.apns_sandbox,
+			)
+			.wrap_err("APNS authentication failed")?,
+		),
+		true => None,
+	};
 	info!("Starting server");
 	api::run_server(settings, Box::new(fcm_auth), apns_auth).await?;
 

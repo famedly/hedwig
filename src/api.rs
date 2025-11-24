@@ -45,10 +45,7 @@ use crate::{
 /// Endpoint for matrix push
 #[instrument]
 pub async fn matrix_push(
-	State(fcm_sender): State<Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>>,
-	State(apns_sender): State<Arc<dyn APNSSender + Send + Sync>>,
-	State(settings): State<Arc<Settings>>,
-	State(counters): State<Arc<Metrics>>,
+	State(app_state): State<AppState>,
 	notification: Notification,
 ) -> Json<PushGatewayResponse> {
 	let mut rejected: Vec<String> = Vec::new();
@@ -66,20 +63,39 @@ pub async fn matrix_push(
 		loop {
 			if let Err(e) = match dev.use_direct_apns {
 				Some(true) => {
-					pusher::push_notification_apns(&notification, dev, &apns_sender, &settings)
+					if let Some(apns_sender) = &app_state.apns_sender {
+						pusher::push_notification_apns(
+							&notification,
+							dev,
+							apns_sender,
+							&app_state.settings,
+						)
 						.await
+					} else {
+						Err(crate::error::HedwigError {
+							error: "APNS sender not configured".to_owned(),
+							errcode: crate::error::ErrCode::APNSNotConfigured,
+						})
+					}
 				}
 				_ => {
-					pusher::push_notification_fcm(&notification, dev, &fcm_sender, &settings).await
+					pusher::push_notification_fcm(
+						&notification,
+						dev,
+						&app_state.fcm_sender,
+						&app_state.settings,
+					)
+					.await
 				}
 			} {
 				attempt += 1;
-				if attempt > settings.hedwig.fcm_push_max_retries {
+				if attempt > app_state.settings.hedwig.fcm_push_max_retries {
 					info!(
 						"A push failed (device type: {}), even after retrying: {}",
 						device_type, e
 					);
-					counters
+					app_state
+						.counters
 						.failed_pushes
 						.add(1, &[KeyValue::new("device_type", device_type.clone())]);
 					rejected.push(dev.pushkey.clone());
@@ -90,7 +106,8 @@ pub async fn matrix_push(
 				tokio::time::sleep(retry_time).await;
 				retry_time *= 2;
 			} else {
-				counters
+				app_state
+					.counters
 					.successful_pushes
 					.add(1, &[KeyValue::new("device_type", device_type.clone())]);
 				break;
@@ -99,7 +116,7 @@ pub async fn matrix_push(
 	}
 
 	if rejected.len() < notification.devices.len() {
-		counters.notifications.add(
+		app_state.counters.notifications.add(
 			1,
 			[notification.r#type.map(|r#type| KeyValue::new("notification_type", r#type))]
 				.into_iter()
@@ -109,7 +126,7 @@ pub async fn matrix_push(
 		);
 	}
 
-	counters.devices.add(notification.devices.len() as u64, &[]);
+	app_state.counters.devices.add(notification.devices.len() as u64, &[]);
 
 	Json(PushGatewayResponse { rejected })
 }
@@ -128,7 +145,7 @@ pub struct AppState {
 	fcm_sender: Arc<Mutex<Box<dyn FcmSender + Send + Sync>>>,
 	/// [APNSSender] for communication with Apple Push Notification Service
 	/// Usually [crate::apns::APNSSenderImpl]
-	apns_sender: Arc<dyn APNSSender + Send + Sync>,
+	apns_sender: Option<Arc<dyn APNSSender + Send + Sync>>,
 	/// Hedwig [Settings]
 	settings: Arc<Settings>,
 	/// Prometheus [Metrics]
@@ -140,13 +157,13 @@ impl AppState {
 	#[must_use]
 	pub fn new(
 		fcm_sender: Box<dyn FcmSender + Send + Sync>,
-		apns_sender: Box<dyn APNSSender + Send + Sync>,
+		apns_sender: Option<Box<dyn APNSSender + Send + Sync>>,
 		settings: Settings,
 		counters: Metrics,
 	) -> Self {
 		AppState {
 			fcm_sender: Arc::new(Mutex::new(fcm_sender)),
-			apns_sender: Arc::from(apns_sender),
+			apns_sender: apns_sender.map(Arc::from),
 			settings: Arc::new(settings),
 			counters: Arc::new(counters),
 		}
@@ -189,9 +206,10 @@ pub fn create_router(
 pub async fn run_server<T: APNSSender + Send + Sync + 'static>(
 	settings: Settings,
 	fcm_sender: Box<dyn FcmSender + Send + Sync>,
-	apns_sender: T,
+	apns_sender: Option<T>,
 ) -> Result<(), Report> {
-	let apns_sender: Box<dyn APNSSender + Send + Sync> = Box::new(apns_sender);
+	let apns_sender =
+		apns_sender.map(|sender| -> Box<dyn APNSSender + Send + Sync> { Box::new(sender) });
 	let addr: SocketAddr = (settings.server.bind_address, settings.server.port).into();
 
 	let registry = prometheus::Registry::new();

@@ -24,6 +24,7 @@ hedwig:
   # https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types
   apns_push_type: background
   apns_topic: app.bundle.id
+  # leave blank if you don't want to use APNS directly
   apns_key_file_path: "path/to/apns_key.p8"
   apns_team_id: "YOUR_TEAM_ID"
   apns_key_id: "YOUR_KEY_ID"

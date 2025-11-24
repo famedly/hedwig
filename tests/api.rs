@@ -92,7 +92,7 @@ async fn server_starts_successfully() -> Result<(), Box<dyn std::error::Error>> 
 	let apns_sender =
 		FakeAPNSSender { topic: "app.bundle.id".to_owned(), push_type: PushType::Background };
 
-	let server_handle = tokio::spawn(run_server(settings, fcm_sender, apns_sender));
+	let server_handle = tokio::spawn(run_server(settings, fcm_sender, Some(apns_sender)));
 
 	// wait in case an error occurs during startup
 	time::sleep(time::Duration::from_secs(1)).await;

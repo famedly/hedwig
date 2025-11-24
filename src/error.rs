@@ -40,6 +40,8 @@ pub enum ErrCode {
 	APNSAuthFailed,
 	/// APNS notification sending failed
 	APNSFailed,
+	/// APNS not configured
+	APNSNotConfigured,
 }
 
 /// Matrix error
