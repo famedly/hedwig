@@ -28,6 +28,8 @@ mod models;
 mod pusher;
 mod settings;
 
+use std::env::set_var;
+
 use color_eyre::{eyre::WrapErr, Report};
 use tracing::info;
 
@@ -43,6 +45,9 @@ async fn main() -> Result<(), Report> {
 	rust_telemetry::init_otel(&settings.telemetry, "Hedwig", "2.0.0", "Hedwig")?;
 
 	info!("Launching with settings: {:?}", settings);
+
+	// gcp_auth will read this env var
+	set_var("GOOGLE_APPLICATION_CREDENTIALS", settings.hedwig.fcm_credentials_file_path.clone());
 
 	let fcm_auth = FcmSenderImpl::new().await.wrap_err("Fcm authentication failed")?;
 	let apns_auth = match settings.hedwig.apns_key_file_path.is_empty() {

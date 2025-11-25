@@ -124,6 +124,7 @@ fn setup_server(
 			notification_request_body_size_limit:
 				Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
 			apns_key_file_path: "".to_owned(),
+			fcm_credentials_file_path: "".to_owned(),
 			apns_key_id: "".to_owned(),
 			apns_team_id: "".to_owned(),
 			apns_sandbox: false,

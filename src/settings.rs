@@ -53,6 +53,8 @@ pub struct Hedwig {
 	pub apns_topic: String,
 	/// Path to the APNs key file
 	pub apns_key_file_path: String,
+	/// Path to the FCM credentials file
+	pub fcm_credentials_file_path: String,
 	/// Team ID of the APNs key
 	pub apns_team_id: String,
 	/// Key ID of the APNs key

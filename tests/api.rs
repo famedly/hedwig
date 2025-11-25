@@ -77,6 +77,7 @@ fn create_test_settings(port: u16) -> Settings {
 		apns_push_type: DeserializablePushType(PushType::Background),
 		apns_topic: "app.bundle.id".to_owned(),
 		apns_key_file_path: "".to_owned(),
+		fcm_credentials_file_path: "".to_owned(),
 		apns_team_id: "TEAM_ID".to_owned(),
 		apns_key_id: "KEY_ID".to_owned(),
 		apns_sandbox: false,
