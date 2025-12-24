@@ -25,7 +25,10 @@ use firebae_cm::{FirebaseMap, IntoFirebaseMap};
 use opentelemetry::metrics::{Counter, Histogram, Meter};
 use serde::{Deserialize, Serialize};
 
-use crate::error::{ErrCode, HedwigError};
+use crate::{
+	error::{ErrCode, HedwigError},
+	settings::DeserializablePushType,
+};
 
 /// The notification priority
 #[derive(Deserialize, Serialize, Debug, Clone)]
@@ -277,19 +280,52 @@ impl IntoFirebaseMap for NotificationData {
 }
 
 /// APNS headers
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct ApnsHeaders {
+	/// APNS ID
+	pub apns_id: Option<String>,
 	/// Priority
-	pub apns_priority: String,
+	pub apns_priority: Option<String>,
 	/// Push type
-	pub apns_push_type: String,
+	pub apns_push_type: DeserializablePushType,
+	/// Expiration in seconds
+	pub apns_expiration: Option<u64>,
+	/// Topic
+	pub apns_topic: Option<String>,
+	/// Collapse ID
+	pub apns_collapse_id: Option<String>,
+}
+
+/// APNS payload
+#[derive(Debug, Deserialize, Clone)]
+pub struct ApnsPayload {
+	/// Category
+	pub category: Option<String>,
+	/// mutable_content
+	pub mutable_content: u8,
+	/// content_available
+	pub content_available: u8,
 }
 
 impl IntoFirebaseMap for ApnsHeaders {
 	fn as_map(&self) -> FirebaseMap {
 		let mut map = FirebaseMap::new();
-		map.insert("apns-priority", &self.apns_priority);
-		map.insert("apns-push-type", &self.apns_push_type);
+		map.insert("apns-push-type", &self.apns_push_type.to_string());
+		if let Some(ref v) = self.apns_priority {
+			map.insert("apns-priority", v);
+		}
+		if let Some(ref v) = self.apns_id {
+			map.insert("apns-id", v);
+		}
+		if let Some(ref v) = self.apns_expiration {
+			map.insert("apns-expiration", v);
+		}
+		if let Some(ref v) = self.apns_topic {
+			map.insert("apns-topic", v);
+		}
+		if let Some(ref v) = self.apns_collapse_id {
+			map.insert("apns-collapse-id", v);
+		}
 		map
 	}
 }

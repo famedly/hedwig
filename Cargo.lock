@@ -469,6 +469,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ececcb659e7ba858fb4f10388c250a7252eb0a27373f1a72b8748afdd248e587"
 dependencies = [
  "powerfmt",
+ "serde_core",
 ]
 
 [[package]]
@@ -609,7 +610,7 @@ checksum = "52051878f80a721bb68ebfbc930e07b65ba72f2da88968ea5c06fd6ca3d3a127"
 [[package]]
 name = "firebae-cm"
 version = "0.4.2"
-source = "git+https://github.com/famedly/firebae-cm.git?branch=thomast%2Ffix-apns-payload#8503906e14fe7a53b90f0f7ffc6eb0febdb45b9c"
+source = "git+https://github.com/famedly/firebae-cm.git?branch=thomast%2Fdeserializable-enums#25287f69eb23a53e35a9be488485502d24878498"
 dependencies = [
  "firebae-derive",
  "log",
@@ -1368,6 +1369,7 @@ dependencies = [
  "rust-telemetry",
  "serde",
  "serde_json",
+ "time",
  "tokio",
  "tower 0.4.13",
  "tower-http",

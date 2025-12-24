@@ -14,16 +14,54 @@ hedwig:
   app_id: "org.matrix.awesome_client"
   # specifies how many attempts at pushing a notification to a device should be made before giving up and reporting the push key as dead
   push_max_retries: 5
+  # common fields for notifications sent to FCM and APNS
+  # notification_title and notification_body support the <count> placeholder, which is replaced with the number of unread messages
   notification_click_action: "FLUTTER_NOTIFICATION_CLICK"
   notification_title: "<count> unread rooms"
-  notification_body: "Open app to read the messages"
+  notification_body: "Open app to read the messages, <count> unread messages"
   notification_sound: "default"
-  notification_icon: "notifications_icon"
-  notification_tag: "org.matrix.default_notification"
-  fcm_notification_android_channel_id: "org.matrix.app.message"
-  # https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types
-  apns_push_type: background
-  apns_topic: app.bundle.id
+  # fields specific for notifications sent to android devices: https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages#androidnotification
+  notification_android:
+    icon: "notifications_icon"
+    tag: "org.matrix.default_notification"
+    channel_id: "org.matrix.app.message"
+    color: null
+    body_loc_key: null
+    body_loc_args: null
+    title_loc_key: null
+    title_loc_args: null
+    ticker: null
+    sticky: false
+    event_time: null
+    local_only: false
+    default_sound: null
+    notification_priority: null
+    default_vibrate_timings: true
+    default_light_settings: true
+    vibrate_timings: null
+    visibility: null
+    light_settings: null
+    image: null
+
+  # headers specific for notifications sent to iOS devices: https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Send-a-POST-request-to-APNs
+  # those will be used both through FCM and direct APNS
+  apns_headers:
+    # https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types
+    apns_push_type: background
+    apns_topic: app.bundle.id
+    apns_id: ""
+    apns_priority: null
+    pub apns_expiration: null
+    pub apns_topic: null
+    pub apns_collapse_id: null
+
+  # payload specific for notifications sent to iOS devices: https://developer.apple.com/documentation/usernotifications/generating-a-remote-notification#Payload-key-reference
+  # those will be used both through FCM and direct APNS
+  apns_payload:
+    category: null
+    mutable_content: 1
+    content_available: 1
+
   # leave blank if you don't want to use APNS directly
   apns_key_file_path: "path/to/apns_key.p8"
   fcm_credentials_file_path: "/path/to/fcm_credentials.json"

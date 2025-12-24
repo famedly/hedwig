@@ -18,12 +18,78 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-use std::{net::IpAddr, path::PathBuf};
+use std::{fmt, net::IpAddr, path::PathBuf};
 
 use a2::PushType;
 use config::{Config, ConfigError, Environment, File};
+use firebae_cm::{LightSettings, NotificationPriority, Visibility};
 use rust_telemetry::config::OtelConfig;
 use serde::{de, Deserialize, Deserializer};
+
+use crate::models::{ApnsHeaders, ApnsPayload};
+
+/// FCM notification Android-specific configuration
+/// https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages#androidnotification
+#[derive(Debug, Deserialize)]
+pub struct FcmNotificationAndroid {
+	/// Notification icon
+	pub icon: String,
+	/// Notification tag
+	pub tag: String,
+	/// ID of the android channel
+	pub channel_id: String,
+	/// The notification's icon color, expressed in #rrggbb format
+	pub color: Option<String>,
+	/// The key to the body string in the app's string resources to use to
+	/// localize the body text to the user's current localization
+	pub body_loc_key: Option<String>,
+	/// Variable string values to be used in place of the format specifiers in
+	/// body_loc_key to use to localize the body text to the user's current
+	/// localization
+	pub body_loc_args: Option<Vec<String>>,
+	/// The key to the title string in the app's string resources to use to
+	/// localize the title text to the user's current localization
+	pub title_loc_key: Option<String>,
+	/// Variable string values to be used in place of the format specifiers in
+	/// title_loc_key to use to localize the title text to the user's current
+	/// localization
+	pub title_loc_args: Option<Vec<String>>,
+	/// Sets the "ticker" text, which is sent to accessibility services. Prior
+	/// to API level 21 (Lollipop), sets the text that is displayed in the
+	/// status bar when the notification first arrives.
+	pub ticker: Option<String>,
+	/// When set to false or unset, the notification is automatically dismissed
+	/// when the user clicks it in the panel. When set to true, the notification
+	/// persists even when the user clicks it.
+	pub sticky: Option<bool>,
+	/// Set the time that the event in the notification occurred. Notifications
+	/// in the panel are sorted by this time.
+	pub event_time: Option<time::OffsetDateTime>,
+	/// Set whether or not this notification is relevant only to the current
+	/// device. Some notifications can be bridged to other devices for remote
+	/// display, such as a Wear OS watch.
+	pub local_only: Option<bool>,
+	/// If set to true, use the Android framework's default sound for the
+	/// notification.
+	pub default_sound: Option<bool>,
+	/// Set the relative priority for this notification
+	pub notification_priority: Option<NotificationPriority>,
+	/// If set to true, use the Android framework's default vibrate pattern for
+	/// the notification.
+	pub default_vibrate_timings: Option<bool>,
+	/// If set to true, use the Android framework's default LED light settings
+	/// for the notification.
+	pub default_light_settings: Option<bool>,
+	/// Set the vibration pattern to use.
+	pub vibrate_timings: Option<Vec<String>>,
+	/// Set the Notification.visibility of the notification.
+	pub visibility: Option<Visibility>,
+	/// Sets the number of items this notification represents.
+	pub light_settings: Option<LightSettings>,
+	/// Contains the URL of an image that is going to be displayed in a
+	/// notification.
+	pub image: Option<String>,
+}
 
 /// Hedwig configuration
 #[derive(Debug, Deserialize)]
@@ -39,18 +105,15 @@ pub struct Hedwig {
 	pub notification_body: String,
 	/// What sound should be played as a part of notification
 	pub notification_sound: String,
-	/// Notification icon
-	pub notification_icon: String,
-	/// Notification tag
-	pub notification_tag: String,
-	/// ID of the android channel
-	pub fcm_notification_android_channel_id: String,
+	/// FCM notification Android-specific configuration
+	pub notification_android: FcmNotificationAndroid,
+	/// Headers sent to APNS
+	pub apns_headers: ApnsHeaders,
+	/// Payload sent to APNS
+	pub apns_payload: ApnsPayload,
+
 	/// Action to trigger on the notification click
 	pub notification_click_action: String,
-	/// Type of notification for Apple devices
-	pub apns_push_type: DeserializablePushType,
-	/// Usually the bundle ID of the app
-	pub apns_topic: String,
 	/// Path to the APNs key file
 	pub apns_key_file_path: Option<PathBuf>,
 	/// Path to the FCM credentials file
@@ -70,8 +133,14 @@ pub struct Hedwig {
 /// We need this to implement the Deserialize trait for PushType
 /// Ideally, the Deserialize trait should be implemented in the a2 crate
 /// directly
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DeserializablePushType(pub PushType);
+
+impl fmt::Display for DeserializablePushType {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		self.0.fmt(f)
+	}
+}
 
 impl<'de> Deserialize<'de> for DeserializablePushType {
 	fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

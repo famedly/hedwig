@@ -18,9 +18,10 @@ hedwig:
   notification_title: "<count> unread rooms"
   notification_body: "Open app to read the messages"
   notification_sound: "default"
-  notification_icon: "notifications_icon"
-  notification_tag: "org.matrix.default_notification"
-  fcm_notification_android_channel_id: "org.matrix.app.message"
+  notification_android:
+    icon: "notifications_icon"
+    tag: "org.matrix.default_notification"
+    channel_id: "org.matrix.app.message"
   # https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types
   apns_push_type: unsupported_push_type
   apns_topic: app.bundle.id

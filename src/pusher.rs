@@ -33,12 +33,13 @@ use crate::{
 	apns::APNSSender,
 	error::{ErrCode, HedwigError},
 	fcm::FcmSender,
-	models::{ApnsHeaders, DataMessageType, Device, Notification},
+	models::{DataMessageType, Device, Notification},
 	settings::Settings,
 };
 
 /// Pushes the FCM notification to the given device
 #[allow(clippy::unused_async)]
+#[allow(clippy::too_many_lines)]
 pub async fn push_notification_fcm(
 	notification: &Notification,
 	device: &Device,
@@ -53,7 +54,9 @@ pub async fn push_notification_fcm(
 
 	let fcm_notification = firebae_cm::Notification {
 		title: Some(settings.hedwig.notification_title.replace("<count>", &count.to_string())),
-		body: Some(settings.hedwig.notification_body.clone()),
+		body: Some(
+			settings.hedwig.notification_body.clone().replace("<count>", &count.to_string()),
+		),
 		image: None,
 	};
 
@@ -85,11 +88,107 @@ pub async fn push_notification_fcm(
 
 			let mut android_notification = AndroidNotification::new();
 			android_notification
-				.channel_id(settings.hedwig.fcm_notification_android_channel_id.clone());
-			android_notification.icon(settings.hedwig.notification_icon.clone());
+				.channel_id(settings.hedwig.notification_android.channel_id.clone());
+			android_notification.icon(settings.hedwig.notification_android.icon.clone());
 			android_notification.sound(settings.hedwig.notification_sound.clone());
-			android_notification.tag(settings.hedwig.notification_tag.clone());
+			android_notification.tag(settings.hedwig.notification_android.tag.clone());
 			android_notification.click_action(settings.hedwig.notification_click_action.clone());
+
+			// set the values that are not None
+			settings
+				.hedwig
+				.notification_android
+				.color
+				.as_ref()
+				.map(|v| android_notification.color(v.clone()));
+			settings
+				.hedwig
+				.notification_android
+				.body_loc_key
+				.as_ref()
+				.map(|v| android_notification.body_loc_key(v.clone()));
+			settings
+				.hedwig
+				.notification_android
+				.body_loc_args
+				.as_ref()
+				.map(|v| android_notification.body_loc_args(v.clone()));
+			settings
+				.hedwig
+				.notification_android
+				.title_loc_key
+				.as_ref()
+				.map(|v| android_notification.title_loc_key(v.clone()));
+			settings
+				.hedwig
+				.notification_android
+				.title_loc_args
+				.as_ref()
+				.map(|v| android_notification.title_loc_args(v.clone()));
+			settings
+				.hedwig
+				.notification_android
+				.ticker
+				.as_ref()
+				.map(|v| android_notification.ticker(v.clone()));
+			settings
+				.hedwig
+				.notification_android
+				.event_time
+				.as_ref()
+				.map(|v| android_notification.event_time(*v));
+			settings
+				.hedwig
+				.notification_android
+				.default_sound
+				.as_ref()
+				.map(|v| android_notification.default_sound(*v));
+			settings
+				.hedwig
+				.notification_android
+				.vibrate_timings
+				.as_ref()
+				.map(|v| android_notification.vibrate_timings(v.clone()));
+			settings
+				.hedwig
+				.notification_android
+				.image
+				.as_ref()
+				.map(|v| android_notification.image(v.clone()));
+			settings.hedwig.notification_android.sticky.map(|v| android_notification.sticky(v));
+			settings
+				.hedwig
+				.notification_android
+				.local_only
+				.map(|v| android_notification.local_only(v));
+			settings
+				.hedwig
+				.notification_android
+				.default_vibrate_timings
+				.map(|v| android_notification.default_vibrate_timings(v));
+			settings
+				.hedwig
+				.notification_android
+				.default_light_settings
+				.map(|v| android_notification.default_light_settings(v));
+			settings
+				.hedwig
+				.notification_android
+				.notification_priority
+				.as_ref()
+				.map(|v| android_notification.notification_priority(v.clone()));
+			settings
+				.hedwig
+				.notification_android
+				.visibility
+				.as_ref()
+				.map(|v| android_notification.visibility(v.clone()));
+			settings
+				.hedwig
+				.notification_android
+				.light_settings
+				.as_ref()
+				.map(|v| android_notification.light_settings(v.clone()));
 
 			let mut android_config = AndroidConfig::new();
 			android_config.notification(android_notification);
@@ -97,12 +196,12 @@ pub async fn push_notification_fcm(
 			android_config.priority(AndroidMessagePriority::High);
 
 			let mut ios_config = ApnsConfig::new();
-			ios_config.headers(ApnsHeaders {
-				apns_priority: "10".to_owned(),
-				apns_push_type: settings.hedwig.apns_push_type.0.to_string(),
-			})?;
+			ios_config.headers(settings.hedwig.apns_headers.clone())?;
 			ios_config.payload(json!({
 				"aps": {
+					"mutable-content": settings.hedwig.apns_payload.mutable_content,
+					"content-available": settings.hedwig.apns_payload.content_available,
+					"category": settings.hedwig.apns_payload.category,
 					"badge": count,
 					"sound": settings.hedwig.notification_sound
 				}
@@ -127,17 +226,15 @@ pub async fn push_notification_fcm(
 			let mut ios_config = ApnsConfig::new();
 			ios_config.payload(json!({
 				"aps": {
-					"mutable-content": 1,
+					"mutable-content": settings.hedwig.apns_payload.mutable_content,
+					"content-available": settings.hedwig.apns_payload.content_available,
+					"category": settings.hedwig.apns_payload.category,
 					"badge": count,
 					"sound": settings.hedwig.notification_sound
 				}
 			}))?;
 
-			// Priority needs to be 5 for the service extension to be used
-			ios_config.headers(ApnsHeaders {
-				apns_priority: "5".to_owned(),
-				apns_push_type: settings.hedwig.apns_push_type.0.to_string(),
-			})?;
+			ios_config.headers(settings.hedwig.apns_headers.clone())?;
 
 			body.apns(ios_config);
 		}
@@ -161,16 +258,27 @@ pub async fn push_notification_apns(
 
 	let count = notification.counts.as_ref().and_then(|c| c.unread).unwrap_or_default();
 
-	let builder = DefaultNotificationBuilder::new()
-		.set_body(settings.hedwig.notification_body.clone())
+	let mut builder = DefaultNotificationBuilder::new()
+		.set_body(settings.hedwig.notification_body.clone().replace("<count>", &count.to_string()))
 		.set_sound(settings.hedwig.notification_sound.clone())
-		.set_title(settings.hedwig.notification_title.clone())
-		.set_badge(u32::from(count))
-		.set_mutable_content();
+		.set_title(
+			settings.hedwig.notification_title.clone().replace("<count>", &count.to_string()),
+		)
+		.set_badge(u32::from(count));
+
+	if settings.hedwig.apns_payload.mutable_content == 1 {
+		builder = builder.set_mutable_content();
+	}
+	if let Some(category) = settings.hedwig.apns_payload.category.clone() {
+		builder = builder.set_category(category);
+	}
+	if settings.hedwig.apns_payload.content_available == 1 {
+		builder = builder.set_content_available();
+	}
 
 	let options = NotificationOptions {
-		apns_topic: Some(settings.hedwig.apns_topic.clone()),
-		apns_push_type: Some(settings.hedwig.apns_push_type.0),
+		apns_topic: settings.hedwig.apns_headers.apns_topic.clone(),
+		apns_push_type: Some(settings.hedwig.apns_headers.apns_push_type.0),
 		..Default::default()
 	};
 
