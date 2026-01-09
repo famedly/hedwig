@@ -51,9 +51,8 @@ hedwig:
     apns_topic: app.bundle.id
     apns_id: ""
     apns_priority: null
-    pub apns_expiration: null
-    pub apns_topic: null
-    pub apns_collapse_id: null
+    apns_expiration: null
+    apns_collapse_id: null
 
   # payload specific for notifications sent to iOS devices: https://developer.apple.com/documentation/usernotifications/generating-a-remote-notification#Payload-key-reference
   # those will be used both through FCM and direct APNS
