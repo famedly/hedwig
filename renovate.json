@@ -5,7 +5,7 @@
     {
       "matchManagers": ["cargo"],
       "groupName": "rust dependencies",
-      "matchUpdateTypes": ["major", "minor"]
+      "matchUpdateTypes": ["major", "minor", "patch"]
     },
     {
       "matchManagers": ["github-actions"],
