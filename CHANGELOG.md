@@ -2,6 +2,33 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2026-01-09
+
+### 🚨 BREAKING changes: Configuration Schema changes
+
+Hedwig will fail to start without adjustment to your configuration!
+
+Most existing configuration settings have been renamed(if you had a setting that started with `fcm_`, you will have to make a change). Specific settings for Android(FCM) and iOS(FCM or APNS) have been added. New optional telemetry settings have been added.
+
+Previously, Hedwig configuration was fairly simple. The new changes are extensive, and it is recommended you start from a fresh configuration file based on the provided sample config yaml. Copying existing settings to this new file should be fairly straight forward.
+
+The FCM (google) auth has also changed, you either need to set the config var `fcm_credentials_file_path` pointing to your existing credentials file, or use one of the methods listed [here](https://github.com/djc/gcp_auth/blob/5a1e48db47784c9afdbad38a33907cb2e98bbfdd/README.md).
+
+Support for direct APNS is optional, config related to it isn't mandatory.
+
+### 🚀 Features
+
+- add support for most fcm and apns notification keys and headers
+- add direct APNS support
+- use rust-metrics instead of axum-opentelemetry-middleware
+- configurable apns-push-type header
+- add CatchPanic middleware
+- Remove kustomize config and update Dockerfile to new openshift standards
+
+### ⚙️ Miscellaneous Tasks
+
+- update crates to mitigate possible vulnerabilities
+
 ## [2.0.0] - 2024-06-21
 
 ### 🚀 Features
@@ -208,7 +235,7 @@ All notable changes to this project will be documented in this file.
 
 ### Fix
 
-- Links for documentation 
+- Links for documentation
 
 ## [0.1.0] - 2021-03-29
 
