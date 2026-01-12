@@ -293,7 +293,12 @@ async fn check_prom(
 	let re = Regex::new(r"} [0-9]\.[0-9]+")?;
 	let data = re.replace_all(&data, "} FLOAT");
 
-	assert_eq!(data.trim_end(), std::fs::read_to_string(filename)?.trim_end());
+	// any version of the telemetry sdk is fine. we do this to avoid test failure on
+	// simple version bumping
+	let processed_data = Regex::new(r#"telemetry_sdk_version="[^"]*""#)
+		.unwrap()
+		.replace_all(&data, r#"telemetry_sdk_version="any""#);
+	assert_eq!(processed_data.trim_end(), std::fs::read_to_string(filename)?.trim_end());
 	Ok(())
 }
 

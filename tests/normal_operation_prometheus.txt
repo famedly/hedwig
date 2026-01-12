@@ -33,4 +33,4 @@ pushes_successful_total{device_type="Ios",otel_scope_name="Hedwig"} 4
 pushes_successful_total{device_type="None",otel_scope_name="Hedwig"} 2
 # HELP target_info Target metadata
 # TYPE target_info gauge
-target_info{service_name="Hedwig",telemetry_sdk_language="rust",telemetry_sdk_name="opentelemetry",telemetry_sdk_version="0.29.0"} 1
+target_info{service_name="Hedwig",telemetry_sdk_language="rust",telemetry_sdk_name="opentelemetry",telemetry_sdk_version="any"} 1
