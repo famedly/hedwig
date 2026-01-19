@@ -24,12 +24,6 @@ Multiple configuration files must be setup :
 
 Hedwig's config `config.yaml` can be replaced by environment variables, which is used for the local kubernetes development setup. All variables are namespaced under `PUSHGW`, with a double underscore (`__`) being the separator between the prefix and all keys. As an example, `server.bind_address` would be represented as `PUSHGW__SERVER__BIND_ADDRESS`. See `deploy/config.properties.sample` for an example configuration.
 
-### Kubernetes
-
-Hedwig can be easily deployed to a k8s cluster during development using the provided k8s manifests, `kustomize`, and `tilt`. If you have these tools installed, deploying a dev instance is as simple as running `tilt up`. Please see the `Tiltfile` for tilt configuration and the `deploy/` folder for manifests and the `kustomization.yaml`.
-
-To run successfully, you will need a google API service account key for use with FCM. Place your key in the `deploy/` folder and name it `fcm-auth.json`. If you need to adjust the location or name of the key, please ensure your changes are reflected in the manifests and `kustomization.yaml`.
-
 ### On app side:
 
 Example valid pusher set request (to homeserver, the homeserver will then talk to hedwig whenever there is a notification):
