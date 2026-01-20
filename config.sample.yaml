@@ -61,7 +61,7 @@ hedwig:
     mutable_content: 1
     content_available: 1
 
-  # leave blank if you don't want to use APNS directly
+  # set it to null if you don't want to use APNS directly
   apns_key_file_path: "path/to/apns_key.p8"
   fcm_credentials_file_path: "/path/to/fcm_credentials.json"
   apns_team_id: "YOUR_TEAM_ID"
