@@ -22,6 +22,7 @@ use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::{
 	extract::{DefaultBodyLimit, FromRef, State},
+	response::Redirect,
 	routing::{get, post},
 	Json, Router,
 };
@@ -189,6 +190,7 @@ pub fn create_router(
 	let http_metrics_middleware = HttpMetricsMiddleware::new(app_state.counters.clone());
 
 	let router = Router::new()
+		.route("/", get(|| async { Redirect::permanent("/version") }))
 		.route("/_matrix/push/v1/notify", post(matrix_push).layer(notification_body_limit))
 		.layer(OtelAxumLayer::default())
 		.layer(http_metrics_middleware)
