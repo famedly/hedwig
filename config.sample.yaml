@@ -59,7 +59,7 @@ hedwig:
   apns_payload:
     category: null
     mutable_content: 1
-    content_available: 1
+    content_available: null
 
   # set it to null if you don't want to use APNS directly
   apns_key_file_path: "path/to/apns_key.p8"

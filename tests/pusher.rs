@@ -138,7 +138,11 @@ fn setup_server(
 				apns_id: None,
 				apns_priority: Some("5".into()),
 			},
-			apns_payload: ApnsPayload { category: None, content_available: 1, mutable_content: 1 },
+			apns_payload: ApnsPayload {
+				category: None,
+				content_available: None,
+				mutable_content: 1,
+			},
 			notification_request_body_size_limit:
 				Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
 			apns_key_file_path: None,

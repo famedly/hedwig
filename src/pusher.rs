@@ -197,15 +197,21 @@ pub async fn push_notification_fcm(
 
 			let mut ios_config = ApnsConfig::new();
 			ios_config.headers(settings.hedwig.apns_headers.clone())?;
-			ios_config.payload(json!({
-				"aps": {
-					"mutable-content": settings.hedwig.apns_payload.mutable_content,
-					"content-available": settings.hedwig.apns_payload.content_available,
-					"category": settings.hedwig.apns_payload.category,
-					"badge": count,
-					"sound": settings.hedwig.notification_sound
-				}
-			}))?;
+			let mut aps = json!({
+				"mutable-content": settings.hedwig.apns_payload.mutable_content,
+				"badge": count,
+				"sound": settings.hedwig.notification_sound
+			});
+
+			// this is set dynamically as a null value will cause APNS to error
+			if let Some(ref category) = settings.hedwig.apns_payload.category {
+				aps["category"] = json!(category);
+			}
+			if let Some(ref content_available) = settings.hedwig.apns_payload.content_available {
+				aps["content-available"] = json!(content_available);
+			}
+
+			ios_config.payload(json!({ "aps": aps }))?;
 
 			body.android(android_config);
 			body.apns(ios_config);
@@ -224,15 +230,20 @@ pub async fn push_notification_fcm(
 			body.data(notification.data(device)?)?;
 
 			let mut ios_config = ApnsConfig::new();
-			ios_config.payload(json!({
-				"aps": {
-					"mutable-content": settings.hedwig.apns_payload.mutable_content,
-					"content-available": settings.hedwig.apns_payload.content_available,
-					"category": settings.hedwig.apns_payload.category,
-					"badge": count,
-					"sound": settings.hedwig.notification_sound
-				}
-			}))?;
+			let mut aps = json!({
+				"mutable-content": settings.hedwig.apns_payload.mutable_content,
+				"badge": count,
+				"sound": settings.hedwig.notification_sound
+			});
+
+			// this is set dynamically as a null value will cause APNS to error
+			if let Some(ref category) = settings.hedwig.apns_payload.category {
+				aps["category"] = json!(category);
+			}
+			if let Some(ref content_available) = settings.hedwig.apns_payload.content_available {
+				aps["content-available"] = json!(content_available);
+			}
+			ios_config.payload(json!({ "aps": aps }))?;
 
 			ios_config.headers(settings.hedwig.apns_headers.clone())?;
 
@@ -272,7 +283,7 @@ pub async fn push_notification_apns(
 	if let Some(category) = settings.hedwig.apns_payload.category.clone() {
 		builder = builder.set_category(category);
 	}
-	if settings.hedwig.apns_payload.content_available == 1 {
+	if settings.hedwig.apns_payload.content_available.is_some() {
 		builder = builder.set_content_available();
 	}
 

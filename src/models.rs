@@ -304,7 +304,7 @@ pub struct ApnsPayload {
 	/// mutable_content
 	pub mutable_content: u8,
 	/// content_available
-	pub content_available: u8,
+	pub content_available: Option<u8>,
 }
 
 impl IntoFirebaseMap for ApnsHeaders {
