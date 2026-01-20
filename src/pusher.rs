@@ -197,15 +197,18 @@ pub async fn push_notification_fcm(
 
 			let mut ios_config = ApnsConfig::new();
 			ios_config.headers(settings.hedwig.apns_headers.clone())?;
-			ios_config.payload(json!({
-				"aps": {
-					"mutable-content": settings.hedwig.apns_payload.mutable_content,
-					"content-available": settings.hedwig.apns_payload.content_available,
-					"category": settings.hedwig.apns_payload.category,
-					"badge": count,
-					"sound": settings.hedwig.notification_sound
-				}
-			}))?;
+			let mut aps = json!({
+				"mutable-content": settings.hedwig.apns_payload.mutable_content,
+				"content-available": settings.hedwig.apns_payload.content_available,
+				"badge": count,
+				"sound": settings.hedwig.notification_sound
+			});
+
+			if let Some(ref category) = settings.hedwig.apns_payload.category {
+				aps["category"] = json!(category);
+			}
+
+			ios_config.payload(json!({ "aps": aps }))?;
 
 			body.android(android_config);
 			body.apns(ios_config);
@@ -224,15 +227,17 @@ pub async fn push_notification_fcm(
 			body.data(notification.data(device)?)?;
 
 			let mut ios_config = ApnsConfig::new();
-			ios_config.payload(json!({
-				"aps": {
-					"mutable-content": settings.hedwig.apns_payload.mutable_content,
-					"content-available": settings.hedwig.apns_payload.content_available,
-					"category": settings.hedwig.apns_payload.category,
-					"badge": count,
-					"sound": settings.hedwig.notification_sound
-				}
-			}))?;
+			let mut aps = json!({
+				"mutable-content": settings.hedwig.apns_payload.mutable_content,
+				"content-available": settings.hedwig.apns_payload.content_available,
+				"badge": count,
+				"sound": settings.hedwig.notification_sound
+			});
+
+			if let Some(ref category) = settings.hedwig.apns_payload.category {
+				aps["category"] = json!(category);
+			}
+			ios_config.payload(json!({ "aps": aps }))?;
 
 			ios_config.headers(settings.hedwig.apns_headers.clone())?;
 
