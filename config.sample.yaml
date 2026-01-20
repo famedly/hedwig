@@ -49,7 +49,7 @@ hedwig:
     # https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types
     apns_push_type: background
     apns_topic: app.bundle.id
-    apns_id: ""
+    apns_id: null
     apns_priority: null
     apns_expiration: null
     apns_collapse_id: null
@@ -59,7 +59,7 @@ hedwig:
   apns_payload:
     category: null
     mutable_content: 1
-    content_available: 1
+    content_available: null
 
   # set it to null if you don't want to use APNS directly
   apns_key_file_path: "path/to/apns_key.p8"

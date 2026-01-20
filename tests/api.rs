@@ -97,7 +97,11 @@ fn create_test_settings(port: u16) -> Settings {
 			apns_id: None,
 			apns_priority: Some("5".into()),
 		},
-		apns_payload: ApnsPayload { category: None, content_available: 1, mutable_content: 1 },
+		apns_payload: ApnsPayload {
+			category: None,
+			content_available: None,
+			mutable_content: Some(1),
+		},
 		apns_key_file_path: None,
 		fcm_credentials_file_path: PathBuf::from(""),
 		apns_team_id: "TEAM_ID".to_owned(),
