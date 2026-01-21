@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2026-01-21
+
+### 🚀 Features
+
+- redirect `/` endpoint to `/version`
+
+### 🐛 Bug Fixes
+
+- conditionally include the keys `category`, `mutable_content` and `content-available` in aps payload
+
+### ⚙️ Miscellaneous Tasks
+
+- clarify how to disable APNS in the config
+- remove unused k8s configuration
+- update rust dependencies
+- allow any otel sdk version in prometheus output for the tests to pass
+
 ## [2.2.0] - 2026-01-09
 
 ### 🚨 BREAKING changes: Configuration Schema changes
