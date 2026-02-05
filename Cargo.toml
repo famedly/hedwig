@@ -13,7 +13,7 @@ edition = "2021"
 a2 = { version = "0.10.0", git = "https://github.com/famedly/a2.git", branch = "thomast/owned-struct-params" }
 async-trait = "0.1.89"
 axum = { version = "0.8.6", features = ["macros"] }
-axum-tracing-opentelemetry = "0.32.1"
+axum-tracing-opentelemetry = "0.33.0"
 color-eyre = "0.6.5"
 config = "0.15.18"
 futures = "0.3.31"
