@@ -97,6 +97,9 @@ pub enum DataMessageType {
 	Android,
 	/// Apns data message
 	Ios, // Apple would hate me for this capitalization
+	/// iOS VoIP push via PushKit — routes directly through APNs with push-type
+	/// voip
+	IosVoip,
 }
 
 impl Device {
@@ -112,6 +115,7 @@ impl Device {
 		match self.data.as_ref().and_then(|d| d.data_message.as_ref()) {
 			Some(msg) if msg == "android" => DataMessageType::Android,
 			Some(msg) if msg == "ios" => DataMessageType::Ios,
+			Some(msg) if msg == "ios_voip" => DataMessageType::IosVoip,
 			_ => DataMessageType::None,
 		}
 	}

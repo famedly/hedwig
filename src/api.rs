@@ -38,7 +38,7 @@ use crate::{
 	apns::APNSSender,
 	fcm::FcmSender,
 	metrics::{metrics_handler, HttpMetricsMiddleware},
-	models::{Metrics, Notification, NotificationMethod, PushGatewayResponse},
+	models::{DataMessageType, Metrics, Notification, NotificationMethod, PushGatewayResponse},
 	pusher,
 	settings::Settings,
 };
@@ -61,18 +61,36 @@ pub async fn matrix_push(
 
 		let mut retry_time = Duration::from_millis(250);
 		let mut attempt = 0;
-		let notify_via = dev.notify_via.clone().unwrap_or_default();
+		// VoIP pushes always go through APNs regardless of the notify_via field,
+		// because the pushkey is a PushKit token rather than an FCM token.
+		let is_voip = matches!(dev.data_message_type(), DataMessageType::IosVoip);
+		let notify_via = if is_voip {
+			NotificationMethod::Apns
+		} else {
+			dev.notify_via.clone().unwrap_or_default()
+		};
+
 		loop {
-			if let Err(e) = match notify_via {
+			if let Err(e) = match &notify_via {
 				NotificationMethod::Apns => {
 					if let Some(apns_sender) = &app_state.apns_sender {
-						pusher::push_notification_apns(
-							&notification,
-							dev,
-							apns_sender,
-							&app_state.settings,
-						)
-						.await
+						if is_voip {
+							pusher::push_notification_voip_apns(
+								&notification,
+								dev,
+								apns_sender,
+								&app_state.settings,
+							)
+							.await
+						} else {
+							pusher::push_notification_apns(
+								&notification,
+								dev,
+								apns_sender,
+								&app_state.settings,
+							)
+							.await
+						}
 					} else {
 						Err(crate::error::HedwigError {
 							error: "APNS sender not configured".to_owned(),
