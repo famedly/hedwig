@@ -42,6 +42,16 @@ pub enum ErrCode {
 	APNSFailed,
 	/// APNS not configured
 	APNSNotConfigured,
+	/// VoIP push requested via a sender that does not support it (e.g. FCM)
+	VoipNotSupported,
+}
+
+impl ErrCode {
+	/// Whether retrying a push that failed with this code could ever succeed.
+	#[must_use]
+	pub fn is_permanent(&self) -> bool {
+		matches!(self, ErrCode::BadJson | ErrCode::VoipNotSupported | ErrCode::APNSNotConfigured)
+	}
 }
 
 /// Matrix error
@@ -84,6 +94,13 @@ impl From<gcp_auth::Error> for HedwigError {
 impl From<serde_json::Error> for HedwigError {
 	fn from(err: serde_json::Error) -> Self {
 		Self { error: err.to_string(), errcode: ErrCode::BadJson }
+	}
+}
+
+impl From<a2::Error> for HedwigError {
+	fn from(err: a2::Error) -> Self {
+		error!("apns error: {}", err);
+		Self { error: err.to_string(), errcode: ErrCode::APNSFailed }
 	}
 }
 

@@ -97,6 +97,9 @@ pub enum DataMessageType {
 	Android,
 	/// Apns data message
 	Ios, // Apple would hate me for this capitalization
+	/// iOS VoIP push via PushKit — routes directly through APNs with push-type
+	/// voip
+	IosVoip,
 }
 
 impl Device {
@@ -112,8 +115,34 @@ impl Device {
 		match self.data.as_ref().and_then(|d| d.data_message.as_ref()) {
 			Some(msg) if msg == "android" => DataMessageType::Android,
 			Some(msg) if msg == "ios" => DataMessageType::Ios,
+			Some(msg) if msg == "ios_voip" => DataMessageType::IosVoip,
 			_ => DataMessageType::None,
 		}
+	}
+
+	/// Returns how the notification should be delivered.
+	///
+	/// Clients can only set custom keys inside the pusher's `data` dictionary
+	/// (the homeserver forwards them as `device.data`), so `notify_via` is
+	/// looked up there as well as at the top level. VoIP devices always use
+	/// APNs since PushKit tokens are not valid FCM tokens.
+	#[must_use]
+	pub fn notification_method(&self) -> NotificationMethod {
+		if let Some(method) = &self.notify_via {
+			return method.clone();
+		}
+		if let Some(method) = self
+			.data
+			.as_ref()
+			.and_then(|d| d.data.get("notify_via"))
+			.and_then(|v| serde_json::from_value::<NotificationMethod>(v.clone()).ok())
+		{
+			return method;
+		}
+		if matches!(self.data_message_type(), DataMessageType::IosVoip) {
+			return NotificationMethod::Apns;
+		}
+		NotificationMethod::default()
 	}
 }
 

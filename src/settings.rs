@@ -153,7 +153,8 @@ impl<'de> Deserialize<'de> for DeserializablePushType {
 			"alert" => PushType::Alert,
 			"background" => PushType::Background,
 			// "location" => PushType::Location,
-			// "voip" => PushType::Voip,
+			// "voip" is intentionally not configurable: it is set internally for
+			// `data_message: ios_voip` devices and would break regular notifications.
 			// "fileprovider" => PushType::FileProvider,
 			// "mdm" => PushType::Mdm,
 			// "liveactivity" => PushType::LiveActivity,

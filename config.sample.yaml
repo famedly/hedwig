@@ -44,7 +44,11 @@ hedwig:
     image: null
 
   # headers specific for notifications sent to iOS devices: https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Send-a-POST-request-to-APNs
-  # those will be used both through FCM and direct APNS
+  # those will be used both through FCM and direct APNS (regular notifications).
+  # Note: VoIP pushes (data_message: ios_voip) use apns_push_type "voip" and the device's
+  # app_id (which must end in ".voip", e.g. com.example.app.voip) as the apns_topic.
+  # The app must register the pusher with notify_via: apns (the pushkey is a PushKit
+  # token, not an FCM token) and apns_key_file_path must be configured.
   apns_headers:
     # https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types
     apns_push_type: background
