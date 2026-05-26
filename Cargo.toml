@@ -13,15 +13,15 @@ edition = "2021"
 a2 = { version = "0.10.0", git = "https://github.com/famedly/a2.git", branch = "thomast/owned-struct-params" }
 async-trait = "0.1.89"
 axum = { version = "0.8.6", features = ["macros"] }
-axum-tracing-opentelemetry = "0.32.1"
+axum-tracing-opentelemetry = "0.38.0"
 color-eyre = "0.6.5"
 config = "0.15.18"
 futures = "0.3.31"
 firebae-cm = { version = "0.4.2", git = "https://github.com/famedly/firebae-cm.git", branch = "thomast/deserializable-enums" }
 gcp_auth = "0.12.4"
-opentelemetry = { version = "0.31.0", features = ["metrics"] }
-opentelemetry_sdk = { version = "0.31.0", features = ["metrics", "rt-tokio"] }
-opentelemetry-prometheus = "0.31"
+opentelemetry = { version = "0.32.0", features = ["metrics"] }
+opentelemetry_sdk = { version = "0.32.0", features = ["metrics", "rt-tokio"] }
+opentelemetry-prometheus = "0.32"
 prometheus = "0.14"
 rust-telemetry = {version = "1.2.0", features = ["axum"]}
 serde = { version = "1.0.228", features = ["derive"] }
