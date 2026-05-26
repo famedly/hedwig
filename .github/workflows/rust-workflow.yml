@@ -18,5 +18,5 @@ jobs:
       issues: write
       pull-requests: write
       contents: read
-    uses: famedly/backend-build-workflows/.github/workflows/rust-workflow.yml@v4
+    uses: famedly/backend-build-workflows/.github/workflows/rust-workflow.yml@fcc2ec82a725d5c4c9c6a8f19e8df101c178dcb6
     secrets: inherit
