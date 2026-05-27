@@ -153,7 +153,7 @@ impl<'de> Deserialize<'de> for DeserializablePushType {
 			"alert" => PushType::Alert,
 			"background" => PushType::Background,
 			// "location" => PushType::Location,
-			// "voip" => PushType::Voip,
+			"voip" => PushType::Voip,
 			// "fileprovider" => PushType::FileProvider,
 			// "mdm" => PushType::Mdm,
 			// "liveactivity" => PushType::LiveActivity,

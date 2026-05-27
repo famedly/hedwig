@@ -87,6 +87,12 @@ impl From<serde_json::Error> for HedwigError {
 	}
 }
 
+impl From<a2::Error> for HedwigError {
+	fn from(err: a2::Error) -> Self {
+		Self { error: err.to_string(), errcode: ErrCode::APNSFailed }
+	}
+}
+
 impl axum::response::IntoResponse for HedwigError {
 	fn into_response(self) -> Response {
 		error!("Failed extracting request body {}", &self.error);

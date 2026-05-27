@@ -21,13 +21,14 @@
 
 use std::sync::Arc;
 
-use a2::{DefaultNotificationBuilder, NotificationBuilder, NotificationOptions};
+use a2::{DefaultNotificationBuilder, NotificationBuilder, NotificationOptions, PushType};
 use firebae_cm::{
 	self, AndroidConfig, AndroidMessagePriority, AndroidNotification, ApnsConfig, MessageBody,
 };
 use serde_json::json;
 use tokio::sync::Mutex;
 use tracing::debug;
+use uuid::Uuid;
 
 use crate::{
 	apns::APNSSender,
@@ -260,6 +261,13 @@ pub async fn push_notification_fcm(
 
 			body.apns(ios_config);
 		}
+		DataMessageType::IosVoip => {
+			// VoIP pushes are routed through push_notification_voip_apns, not FCM.
+			return Err(HedwigError {
+				error: "VoIP pushes must use the APNs sender, not FCM".to_owned(),
+				errcode: ErrCode::BadJson,
+			});
+		}
 	};
 
 	sender.lock().await.send(body).await?;
@@ -307,6 +315,54 @@ pub async fn push_notification_apns(
 	let payload = builder.build(device.pushkey.clone(), options);
 
 	debug!("Pushing notification to {:?} device", device.data_message_type());
+
+	sender.send(payload).await?;
+
+	Ok(())
+}
+
+/// Pushes a VoIP push notification to an iOS device via APNs / PushKit
+///
+/// VoIP pushes use `apns-push-type: voip` and carry a raw payload (no `aps`
+/// alert) with call metadata that the iOS `AppDelegate` reads to present the
+/// native CallKit incoming-call screen.
+pub async fn push_notification_voip_apns(
+	notification: &Notification,
+	device: &Device,
+	sender: &Arc<dyn APNSSender + Send + Sync>,
+	settings: &Settings,
+) -> Result<(), HedwigError> {
+	if !device.app_id.starts_with(&settings.hedwig.app_id) {
+		return Err(HedwigError { error: "Invalid app id!".to_owned(), errcode: ErrCode::BadJson });
+	}
+
+	// Use the APNs topic matching the PushKit registration (bundle-id + ".voip")
+	let options = NotificationOptions {
+		apns_topic: Some(device.app_id.clone()),
+		apns_push_type: Some(PushType::Voip),
+		..Default::default()
+	};
+
+	let mut payload = DefaultNotificationBuilder::new().build(device.pushkey.clone(), options);
+
+	// Caller display name: prefer sender_display_name, fall back to room_name
+	let name = notification
+		.sender_display_name
+		.as_deref()
+		.or(notification.room_name.as_deref())
+		.unwrap_or("");
+
+	// Stable ID derived from event_id so CallKit can deduplicate; falls back to a
+	// random UUID when the homeserver sends event_id_only format without an id.
+	let call_id = notification.event_id.clone().unwrap_or_else(|| Uuid::new_v4().to_string());
+
+	// Fields read by AppDelegate via PKPushPayload.dictionaryPayload
+	payload.add_custom_data("id".to_owned(), &call_id)?;
+	payload.add_custom_data("nameCaller".to_owned(), &name)?;
+	payload.add_custom_data("handle".to_owned(), &"")?;
+	payload.add_custom_data("isVideo".to_owned(), &false)?;
+
+	debug!("Pushing VoIP notification to {:?} device", device.data_message_type());
 
 	sender.send(payload).await?;
 
