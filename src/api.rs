@@ -38,7 +38,7 @@ use crate::{
 	apns::APNSSender,
 	fcm::FcmSender,
 	metrics::{metrics_handler, HttpMetricsMiddleware},
-	models::{Metrics, Notification, NotificationMethod, PushGatewayResponse},
+	models::{DataMessageType, Metrics, Notification, NotificationMethod, PushGatewayResponse},
 	pusher,
 	settings::Settings,
 };
@@ -61,18 +61,32 @@ pub async fn matrix_push(
 
 		let mut retry_time = Duration::from_millis(250);
 		let mut attempt = 0;
-		let notify_via = dev.notify_via.clone().unwrap_or_default();
+		// VoIP pushkeys are PushKit tokens, so they are always routed via APNs;
+		// `notify_via: apns` may be set top-level or inside the pusher data.
+		let is_voip = matches!(dev.data_message_type(), DataMessageType::IosVoip);
+		let notify_via = dev.notification_method();
+
 		loop {
-			if let Err(e) = match notify_via {
+			if let Err(e) = match &notify_via {
 				NotificationMethod::Apns => {
 					if let Some(apns_sender) = &app_state.apns_sender {
-						pusher::push_notification_apns(
-							&notification,
-							dev,
-							apns_sender,
-							&app_state.settings,
-						)
-						.await
+						if is_voip {
+							pusher::push_notification_voip_apns(
+								&notification,
+								dev,
+								apns_sender,
+								&app_state.settings,
+							)
+							.await
+						} else {
+							pusher::push_notification_apns(
+								&notification,
+								dev,
+								apns_sender,
+								&app_state.settings,
+							)
+							.await
+						}
 					} else {
 						Err(crate::error::HedwigError {
 							error: "APNS sender not configured".to_owned(),
@@ -91,7 +105,9 @@ pub async fn matrix_push(
 				}
 			} {
 				attempt += 1;
-				if attempt > app_state.settings.hedwig.push_max_retries {
+				// Don't retry permanent failures; they'll never succeed.
+				if e.errcode.is_permanent() || attempt > app_state.settings.hedwig.push_max_retries
+				{
 					info!(
 						"A push failed (device type: {}), even after retrying: {}",
 						device_type, e

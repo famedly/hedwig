@@ -577,6 +577,139 @@ async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 	Ok(())
 }
 
+#[tokio::test]
+async fn voip_push() -> Result<(), Box<dyn std::error::Error>> {
+	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, mut apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Some(Box::new(FakeAPNSSender { tx: apns_tx })),
+	)?;
+
+	let msg = json!({
+		"notification": {
+			"counts": { "unread": 1_i32 },
+			"devices": [{
+				"app_id": "com.famedly.🦊.voip",
+				"data": {
+					"format": "event_id_only",
+					"data_message": "ios_voip"
+				},
+				"pushkey": "voip_device_token",
+				"pushkey_ts": 1_655_896_032_i32,
+				"notify_via": "apns"
+			}],
+			"room_id": "!room:server",
+			"event_id": "$eventabc123",
+			"sender": "@alice:server",
+			"sender_display_name": "Alice",
+			"prio": "high"
+		}
+	});
+
+	let resp = run_request(&mut service, msg).await?;
+	assert_eq!(&resp, "{\"rejected\":[]}");
+
+	let payload = apns_rx.recv().await.unwrap();
+	assert_eq!(payload.device_token, "voip_device_token");
+
+	let json: Value = serde_json::from_str(&payload.to_json_string()?)?;
+	// id is a stable UUIDv5 derived from event_id (must be a valid UUID string,
+	// since the app parses it with UUID(uuidString:))
+	let expected_id =
+		uuid::Uuid::new_v5(&uuid::Uuid::NAMESPACE_OID, "$eventabc123".as_bytes()).to_string();
+	assert_eq!(json["id"], expected_id);
+	assert_eq!(json["nameCaller"], "Alice");
+	assert_eq!(json["handle"], "");
+	assert_eq!(json["isVideo"], false);
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn voip_push_no_sender_display_name_falls_back_to_room_name(
+) -> Result<(), Box<dyn std::error::Error>> {
+	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, mut apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Some(Box::new(FakeAPNSSender { tx: apns_tx })),
+	)?;
+
+	let msg = json!({
+		"notification": {
+			"counts": { "unread": 1_i32 },
+			"devices": [{
+				"app_id": "com.famedly.🦊.voip",
+				"data": {
+					"format": "event_id_only",
+					"data_message": "ios_voip"
+				},
+				"pushkey": "voip_device_token",
+				"pushkey_ts": 1_655_896_032_i32,
+				"notify_via": "apns"
+			}],
+			"room_id": "!room:server",
+			"room_name": "My Room",
+			"prio": "high"
+		}
+	});
+
+	let resp = run_request(&mut service, msg).await?;
+	assert_eq!(&resp, "{\"rejected\":[]}");
+
+	let payload = apns_rx.recv().await.unwrap();
+	let json: Value = serde_json::from_str(&payload.to_json_string()?)?;
+	assert_eq!(json["nameCaller"], "My Room");
+	// No event_id: id must be a non-empty UUID string
+	assert!(json.get("id").and_then(|v| v.as_str()).is_some_and(|s| !s.is_empty()));
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn voip_push_without_top_level_notify_via_routes_to_apns(
+) -> Result<(), Box<dyn std::error::Error>> {
+	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, mut apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Some(Box::new(FakeAPNSSender { tx: apns_tx })),
+	)?;
+
+	// Homeservers forward custom pusher keys inside `device.data` and never at
+	// the device top level, so `notify_via` must be honoured from there (and
+	// VoIP devices must route via APNs even without it).
+	let msg = json!({
+		"notification": {
+			"counts": { "unread": 1_i32 },
+			"devices": [{
+				"app_id": "com.famedly.🦊.voip",
+				"data": {
+					"format": "event_id_only",
+					"data_message": "ios_voip",
+					"notify_via": "apns"
+				},
+				"pushkey": "voip_device_token",
+				"pushkey_ts": 1_655_896_032_i32
+			}],
+			"room_id": "!room:server",
+			"sender_display_name": "Alice",
+			"prio": "high"
+		}
+	});
+
+	let resp = run_request(&mut service, msg).await?;
+	assert_eq!(&resp, "{\"rejected\":[]}");
+
+	let payload = apns_rx.recv().await.unwrap();
+	assert_eq!(payload.device_token, "voip_device_token");
+	let json: Value = serde_json::from_str(&payload.to_json_string()?)?;
+	assert_eq!(json["nameCaller"], "Alice");
+
+	Ok(())
+}
+
 #[derive(Debug)]
 struct PanickingFcmSender;
 #[async_trait]

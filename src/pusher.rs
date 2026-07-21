@@ -21,13 +21,14 @@
 
 use std::sync::Arc;
 
-use a2::{DefaultNotificationBuilder, NotificationBuilder, NotificationOptions};
+use a2::{DefaultNotificationBuilder, NotificationBuilder, NotificationOptions, PushType};
 use firebae_cm::{
 	self, AndroidConfig, AndroidMessagePriority, AndroidNotification, ApnsConfig, MessageBody,
 };
 use serde_json::json;
 use tokio::sync::Mutex;
 use tracing::debug;
+use uuid::Uuid;
 
 use crate::{
 	apns::APNSSender,
@@ -36,6 +37,15 @@ use crate::{
 	models::{DataMessageType, Device, Notification},
 	settings::Settings,
 };
+
+/// Validates that a device's `app_id` matches the configured Hedwig app id.
+fn validate_app_id(device: &Device, settings: &Settings) -> Result<(), HedwigError> {
+	if !device.app_id.starts_with(&settings.hedwig.app_id) {
+		return Err(HedwigError { error: "Invalid app id!".to_owned(), errcode: ErrCode::BadJson });
+	}
+
+	Ok(())
+}
 
 /// Pushes the FCM notification to the given device
 #[allow(clippy::unused_async)]
@@ -46,9 +56,7 @@ pub async fn push_notification_fcm(
 	sender: &Mutex<Box<dyn FcmSender + Send + Sync>>,
 	settings: &Settings,
 ) -> Result<(), HedwigError> {
-	if !device.app_id.starts_with(&settings.hedwig.app_id) {
-		return Err(HedwigError { error: "Invalid app id!".to_owned(), errcode: ErrCode::BadJson });
-	}
+	validate_app_id(device, settings)?;
 
 	let count = notification.counts.as_ref().and_then(|c| c.unread).unwrap_or_default();
 
@@ -260,6 +268,13 @@ pub async fn push_notification_fcm(
 
 			body.apns(ios_config);
 		}
+		DataMessageType::IosVoip => {
+			// VoIP pushes are routed through push_notification_voip_apns, not FCM.
+			return Err(HedwigError {
+				error: "VoIP pushes must use the APNs sender, not FCM".to_owned(),
+				errcode: ErrCode::VoipNotSupported,
+			});
+		}
 	};
 
 	sender.lock().await.send(body).await?;
@@ -274,9 +289,7 @@ pub async fn push_notification_apns(
 	sender: &Arc<dyn APNSSender + Send + Sync>,
 	settings: &Settings,
 ) -> Result<(), HedwigError> {
-	if !device.app_id.starts_with(&settings.hedwig.app_id) {
-		return Err(HedwigError { error: "Invalid app id!".to_owned(), errcode: ErrCode::BadJson });
-	}
+	validate_app_id(device, settings)?;
 
 	let count = notification.counts.as_ref().and_then(|c| c.unread).unwrap_or_default();
 
@@ -307,6 +320,71 @@ pub async fn push_notification_apns(
 	let payload = builder.build(device.pushkey.clone(), options);
 
 	debug!("Pushing notification to {:?} device", device.data_message_type());
+
+	sender.send(payload).await?;
+
+	Ok(())
+}
+
+/// Pushes a VoIP push notification to an iOS device via APNs / PushKit
+///
+/// VoIP pushes use `apns-push-type: voip` and carry a raw payload (no `aps`
+/// alert) with call metadata that the iOS `AppDelegate` reads to present the
+/// native CallKit incoming-call screen.
+pub async fn push_notification_voip_apns(
+	notification: &Notification,
+	device: &Device,
+	sender: &Arc<dyn APNSSender + Send + Sync>,
+	settings: &Settings,
+) -> Result<(), HedwigError> {
+	validate_app_id(device, settings)?;
+
+	// The APNs topic must match the PushKit registration (bundle-id + ".voip")
+	if !device.app_id.ends_with(".voip") {
+		return Err(HedwigError {
+			error: "VoIP pushes require an app_id ending in '.voip'".to_owned(),
+			errcode: ErrCode::BadJson,
+		});
+	}
+
+	let options = NotificationOptions {
+		apns_topic: Some(device.app_id.clone()),
+		apns_push_type: Some(PushType::Voip),
+		..Default::default()
+	};
+
+	let mut payload = DefaultNotificationBuilder::new().build(device.pushkey.clone(), options);
+
+	// Caller display name: prefer sender_display_name, fall back to room_name
+	let name = notification
+		.sender_display_name
+		.as_deref()
+		.or(notification.room_name.as_deref())
+		.unwrap_or("Unknown");
+
+	// Stable UUID derived from event_id so CallKit can deduplicate; falls back to
+	// a random UUID when the homeserver sends event_id_only format without an id.
+	// The id must be a valid UUID string (the app parses it with
+	// UUID(uuidString:)), so the Matrix event_id ($abc...) is hashed into a UUIDv5
+	// rather than passed raw.
+	let call_id = notification.event_id.as_ref().map_or_else(
+		|| Uuid::new_v4().to_string(),
+		|event_id| Uuid::new_v5(&Uuid::NAMESPACE_OID, event_id.as_bytes()).to_string(),
+	);
+
+	// Fields read by AppDelegate via PKPushPayload.dictionaryPayload
+	payload.add_custom_data("id".to_owned(), &call_id)?;
+	// Extra `&` needed: `add_custom_data` takes `&dyn Serialize`, and `str` is
+	// unsized.
+	payload.add_custom_data("nameCaller".to_owned(), &name)?;
+	// No caller address is known at push time, so the CallKit handle is
+	// intentionally left empty; the app resolves the call via the id.
+	payload.add_custom_data("handle".to_owned(), &"")?;
+	// The call type is not known at push time (event content is encrypted), so
+	// default to an audio call; the app updates the UI after decryption.
+	payload.add_custom_data("isVideo".to_owned(), &false)?;
+
+	debug!("Pushing VoIP notification to {:?} device", device.data_message_type());
 
 	sender.send(payload).await?;
 
