@@ -12,6 +12,10 @@ server:
 
 hedwig:
   app_id: "org.matrix.awesome_client"
+  # Application ID prefix for VoIP devices (data_message: ios_voip). Must be
+  # the app's real bundle id + ".voip" since it's sent to Apple as the
+  # apns-topic.
+  voip_app_id: "org.matrix.awesome_client.voip"
   # specifies how many attempts at pushing a notification to a device should be made before giving up and reporting the push key as dead
   push_max_retries: 5
   # common fields for notifications sent to FCM and APNS
@@ -51,7 +55,9 @@ hedwig:
   # token, not an FCM token) and apns_key_file_path must be configured.
   apns_headers:
     # https://developer.apple.com/documentation/usernotifications/sending-notification-requests-to-apns#Know-when-to-use-push-types
-    apns_push_type: background
+    # Use "alert" for regular (visible) notifications; "background" suppresses
+    # the banner and skips the client's Notification Service Extension.
+    apns_push_type: alert
     apns_topic: app.bundle.id
     apns_id: null
     apns_priority: null

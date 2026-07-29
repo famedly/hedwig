@@ -38,9 +38,14 @@ use crate::{
 	settings::Settings,
 };
 
-/// Validates that a device's `app_id` matches the configured Hedwig app id.
+/// Validates a device's `app_id`, using `hedwig.voip_app_id` for VoIP
+/// devices and `hedwig.app_id` otherwise.
 fn validate_app_id(device: &Device, settings: &Settings) -> Result<(), HedwigError> {
-	if !device.app_id.starts_with(&settings.hedwig.app_id) {
+	let is_voip = matches!(device.data_message_type(), DataMessageType::IosVoip);
+	let allowed_prefix =
+		if is_voip { &settings.hedwig.voip_app_id } else { &settings.hedwig.app_id };
+
+	if !device.app_id.starts_with(allowed_prefix) {
 		return Err(HedwigError { error: "Invalid app id!".to_owned(), errcode: ErrCode::BadJson });
 	}
 

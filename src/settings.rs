@@ -94,8 +94,13 @@ pub struct FcmNotificationAndroid {
 /// Hedwig configuration
 #[derive(Debug, Deserialize)]
 pub struct Hedwig {
-	/// Application ID
+	/// Application ID prefix for validating regular (non-VoIP) pushers.
 	pub app_id: String,
+	/// Application ID prefix for validating VoIP devices. Kept separate
+	/// from `app_id` since a VoIP device's `app_id` is used verbatim as the
+	/// `apns-topic` (must be the real bundle id + `.voip`), unlike the
+	/// arbitrary `app_id` used for regular routing.
+	pub voip_app_id: String,
 	/// Maximum amount of attempts hedwig should make
 	pub push_max_retries: i64,
 	/// The text to display in a notification (replaces <count> tag with a

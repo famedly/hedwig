@@ -96,6 +96,14 @@ fn setup_server(
 	fcm_sender: Box<dyn FcmSender + Send + Sync>,
 	apns_sender: Option<Box<dyn APNSSender + Send + Sync>>,
 ) -> Result<Router, Report> {
+	setup_server_with_voip_app_id(fcm_sender, apns_sender, None)
+}
+
+fn setup_server_with_voip_app_id(
+	fcm_sender: Box<dyn FcmSender + Send + Sync>,
+	apns_sender: Option<Box<dyn APNSSender + Send + Sync>>,
+	voip_app_id: Option<&str>,
+) -> Result<Router, Report> {
 	let settings = {
 		let log = settings::Log { level: "DEBUG".to_owned() };
 
@@ -103,6 +111,7 @@ fn setup_server(
 
 		let hedwig = settings::Hedwig {
 			app_id: "com.famedly.🦊".to_owned(),
+			voip_app_id: voip_app_id.unwrap_or("com.famedly.🦊").to_owned(),
 			push_max_retries: 4,
 			notification_title: "🦊 <count> 🦊".to_owned(),
 			notification_body: "read the notification pls :c".to_owned(),
@@ -706,6 +715,48 @@ async fn voip_push_without_top_level_notify_via_routes_to_apns(
 	assert_eq!(payload.device_token, "voip_device_token");
 	let json: Value = serde_json::from_str(&payload.to_json_string()?)?;
 	assert_eq!(json["nameCaller"], "Alice");
+
+	Ok(())
+}
+
+#[tokio::test]
+async fn voip_push_uses_separate_voip_app_id() -> Result<(), Box<dyn std::error::Error>> {
+	// A VoIP device's app_id is the real bundle id + ".voip" (required by Apple
+	// as the apns-topic), which doesn't have to share a prefix with the
+	// regular app_id used for FCM/webhook routing. voip_app_id lets both be
+	// validated independently.
+	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
+	let (apns_tx, mut apns_rx) = mpsc::channel(1337);
+	let mut service = setup_server_with_voip_app_id(
+		Box::new(FakeFcmSender(fcm_tx)),
+		Some(Box::new(FakeAPNSSender { tx: apns_tx })),
+		Some("com.famedly.famedlytalk.voip"),
+	)?;
+
+	let msg = json!({
+		"notification": {
+			"counts": { "unread": 1_i32 },
+			"devices": [{
+				"app_id": "com.famedly.famedlytalk.voip",
+				"data": {
+					"format": "event_id_only",
+					"data_message": "ios_voip",
+					"notify_via": "apns"
+				},
+				"pushkey": "voip_device_token",
+				"pushkey_ts": 1_655_896_032_i32
+			}],
+			"room_id": "!room:server",
+			"sender_display_name": "Alice",
+			"prio": "high"
+		}
+	});
+
+	let resp = run_request(&mut service, msg).await?;
+	assert_eq!(&resp, "{\"rejected\":[]}");
+
+	let payload = apns_rx.recv().await.unwrap();
+	assert_eq!(payload.device_token, "voip_device_token");
 
 	Ok(())
 }
