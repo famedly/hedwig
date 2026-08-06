@@ -60,6 +60,7 @@ fn create_test_settings(port: u16) -> Settings {
 
 	let hedwig = settings::Hedwig {
 		app_id: "com.test.app".to_owned(),
+		voip_app_id: "com.test.app.voip".to_owned(),
 		push_max_retries: 3,
 		notification_title: "Test".to_owned(),
 		notification_body: "Test body".to_owned(),
