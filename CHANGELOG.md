@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0] - 2026-08-07
+
+### 🚀 Features
+
+- validate VoIP devices against a separate app_id prefix
+- add VoIP push support for PushKit / CallKit
+
+### ⚙️ Miscellaneous Tasks
+
+- update GitHub Action pins
+
 ## [2.3.0] - 2026-01-21
 
 ### 🚀 Features
