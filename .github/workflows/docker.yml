@@ -4,11 +4,12 @@ on:
   push:
     branches: ["main"]
     tags: ["*"]
+  workflow_dispatch:
 
 jobs:
   build:
     uses: famedly/backend-build-workflows/.github/workflows/docker-backend.yml@fcc2ec82a725d5c4c9c6a8f19e8df101c178dcb6
     secrets: inherit
     with:
-      name: hedwig
+      targets: hedwig
       oss: true
