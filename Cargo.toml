@@ -20,7 +20,7 @@ futures = "0.3.31"
 firebae-cm = { version = "0.4.2", git = "https://github.com/famedly/firebae-cm.git", branch = "thomast/deserializable-enums" }
 gcp_auth = "0.12.4"
 opentelemetry = { version = "0.31.0", features = ["metrics"] }
-opentelemetry_sdk = { version = "0.31.0", features = ["metrics", "rt-tokio"] }
+opentelemetry_sdk = { version = "0.32.0", features = ["metrics", "rt-tokio"] }
 opentelemetry-prometheus = "0.31"
 prometheus = "0.14"
 rust-telemetry = { version = "1.2.0", features = ["axum"] }
