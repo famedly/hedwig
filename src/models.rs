@@ -20,7 +20,7 @@
 
 use std::collections::HashMap;
 
-use axum::{body::Body, extract::FromRequest, http::Request, Json};
+use axum::{Json, body::Body, extract::FromRequest, http::Request};
 use firebae_cm::{FirebaseMap, IntoFirebaseMap};
 use opentelemetry::metrics::{Counter, Histogram, Meter};
 use serde::{Deserialize, Serialize};
@@ -283,7 +283,7 @@ impl IntoFirebaseMap for NotificationData {
 	fn as_map(&self) -> FirebaseMap {
 		let mut map = FirebaseMap::new();
 		let mut insert_opt = |key: &str, val: &Option<String>| {
-			if let Some(ref v) = val {
+			if let Some(v) = val {
 				map.insert(key, v);
 			}
 		};

@@ -28,7 +28,7 @@ mod models;
 mod pusher;
 mod settings;
 
-use color_eyre::{eyre::WrapErr, Report};
+use color_eyre::{Report, eyre::WrapErr};
 use tracing::info;
 
 use crate::{apns::APNSSenderImpl, fcm::FcmSenderImpl};
