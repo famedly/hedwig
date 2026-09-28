@@ -2,5 +2,5 @@
 fail-fast = false
 [profile.ci.junit]
 path = "junit.xml"
-store-success-output = true
 store-failure-output = true
+store-success-output = true

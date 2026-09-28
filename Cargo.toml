@@ -1,13 +1,13 @@
 [package]
-name = "matrix-hedwig"
-version = "2.2.0"
 authors = [
-	"Christian Pauly <c.pauly@famedly.com>",
-	"Kateřina Churanová <k.churanova@famedly.com>",
-	"Emily Dietrich <emilydietrich321@gmail.com>",
+  "Christian Pauly <c.pauly@famedly.com>",
+  "Kateřina Churanová <k.churanova@famedly.com>",
+  "Emily Dietrich <emilydietrich321@gmail.com>",
 ]
+edition = "2024"
+name = "matrix-hedwig"
 publish = false
-edition = "2021"
+version = "2.2.0"
 
 [dependencies]
 a2 = { version = "0.10.0", git = "https://github.com/famedly/a2.git", branch = "thomast/owned-struct-params" }
@@ -16,12 +16,12 @@ axum = { version = "0.8.6", features = ["macros"] }
 axum-tracing-opentelemetry = "0.32.1"
 color-eyre = "0.6.5"
 config = "0.15.18"
-futures = "0.3.31"
 firebae-cm = { version = "0.4.2", git = "https://github.com/famedly/firebae-cm.git", branch = "thomast/deserializable-enums" }
+futures = "0.3.31"
 gcp_auth = "0.12.4"
 opentelemetry = { version = "0.31.0", features = ["metrics"] }
-opentelemetry_sdk = { version = "0.31.0", features = ["metrics", "rt-tokio"] }
 opentelemetry-prometheus = "0.31"
+opentelemetry_sdk = { version = "0.31.0", features = ["metrics", "rt-tokio"] }
 prometheus = "0.14"
 rust-telemetry = { version = "1.2.0", features = ["axum"] }
 serde = { version = "1.0.228", features = ["derive"] }
@@ -44,10 +44,10 @@ tower = "0.5.0"
 [build-dependencies]
 anyhow = "1.0.95"
 vergen-gitcl = { version = "1.0.5", features = [
-	"cargo",
-	"build",
-	"rustc",
-	"si",
+  "cargo",
+  "build",
+  "rustc",
+  "si",
 ] } # vergen passes metadata like the version and git commit hash to cargo as a compile-time environment variables
 
 [lints.rust]
@@ -61,7 +61,6 @@ unused_import_braces = "warn"
 unused_qualifications = "warn"
 
 [lints.clippy]
-tabs_in_doc_comments = "allow"
 branches_sharing_code = "warn"
 cast_lossless = "warn"
 cast_possible_wrap = "warn"
@@ -98,6 +97,7 @@ manual_ok_or = "warn"
 many_single_char_names = "warn"
 map_unwrap_or = "warn"
 mem_forget = "warn"
+tabs_in_doc_comments = "allow"
 #missing_const_for_fn = "warn"
 missing_docs_in_private_items = "warn"
 must_use_candidate = "warn"

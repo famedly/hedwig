@@ -21,7 +21,7 @@
 
 use std::{fmt::Debug, fs::File, path::PathBuf};
 
-use a2::{request::payload::Payload, Client, ClientConfig, Endpoint};
+use a2::{Client, ClientConfig, Endpoint, request::payload::Payload};
 use async_trait::async_trait;
 
 use crate::error::{ErrCode, HedwigError};

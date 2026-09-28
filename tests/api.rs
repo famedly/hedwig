@@ -19,7 +19,7 @@
 
 use std::path::PathBuf;
 
-use a2::{request::payload::Payload, PushType};
+use a2::{PushType, request::payload::Payload};
 use async_trait::async_trait;
 use firebae_cm::MessageBody;
 use matrix_hedwig::{

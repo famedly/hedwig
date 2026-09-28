@@ -20,6 +20,10 @@
       systems = famedly-engineering-standards.lib.famedlySystems;
 
       perSystem = { config, ... }: {
+        # These files are deliberate test fixtures containing dummy private
+        # keys; exclude them from the detect-private-key pre-commit hook.
+        prek-pre-commit.workspaces.".".exclude = "^tests/(test\\.key|dummy-service-account\\.json)$";
+
         # Specify a default devshell for the project; other options are
         # documented in the devshells section below.
         #

@@ -6,6 +6,7 @@
 #
 # Regenerate with `nix run .#filegen-activate`.
 
+exclude: ^tests/(test\.key|dummy-service-account\.json)$
 repos:
 - hooks:
   - id: check-added-large-files
