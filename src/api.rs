@@ -21,15 +21,15 @@
 use std::{net::SocketAddr, sync::Arc, time::Duration};
 
 use axum::{
+	Json, Router,
 	extract::{DefaultBodyLimit, FromRef, State},
 	response::Redirect,
 	routing::{get, post},
-	Json, Router,
 };
 use axum_tracing_opentelemetry::middleware::OtelAxumLayer;
-use color_eyre::{eyre::WrapErr, Report};
-use opentelemetry::{metrics::MeterProvider, KeyValue};
-use opentelemetry_sdk::{metrics::SdkMeterProvider, Resource};
+use color_eyre::{Report, eyre::WrapErr};
+use opentelemetry::{KeyValue, metrics::MeterProvider};
+use opentelemetry_sdk::{Resource, metrics::SdkMeterProvider};
 use tokio::sync::Mutex;
 use tower_http::{catch_panic::CatchPanicLayer, normalize_path::NormalizePathLayer};
 use tracing::{debug, info, instrument};
@@ -37,7 +37,7 @@ use tracing::{debug, info, instrument};
 use crate::{
 	apns::APNSSender,
 	fcm::FcmSender,
-	metrics::{metrics_handler, HttpMetricsMiddleware},
+	metrics::{HttpMetricsMiddleware, metrics_handler},
 	models::{DataMessageType, Metrics, Notification, NotificationMethod, PushGatewayResponse},
 	pusher,
 	settings::Settings,

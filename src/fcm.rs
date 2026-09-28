@@ -57,8 +57,16 @@ impl Debug for FcmSenderImpl {
 impl FcmSenderImpl {
 	/// Create new fcm sender from the path to a service-account fcm token
 	pub async fn new(credentials_file_path: &PathBuf) -> Result<Self, gcp_auth::Error> {
-		// gcp_auth will read this env var
-		set_var("GOOGLE_APPLICATION_CREDENTIALS", credentials_file_path);
+		// gcp_auth will read this env var.
+		// TODO: find a way to not need the `unsafe` block.
+		// SAFETY: `set_var` is sound only if no other thread is concurrently
+		// reading or writing the environment. This runs once at startup, before
+		// `api::run_server` begins handling requests, so nothing else accesses
+		// the environment at this point in hedwig. It should be fine if this
+		// runs in docker.
+		unsafe {
+			set_var("GOOGLE_APPLICATION_CREDENTIALS", credentials_file_path);
+		}
 		let provider = gcp_auth::provider().await?;
 		let project_id: String = provider.project_id().await?.to_string();
 

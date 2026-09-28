@@ -1,0 +1,78 @@
+## SPDX-FileCopyrightText: 2026 Famedly GmbH
+##
+## SPDX-License-Identifier: Apache-2.0
+
+# managed-by: engineering-standards — do not edit manually.
+#
+# Regenerate with `nix run .#filegen-activate`.
+
+allowMissingFormatter = false
+excludes = [
+    "*.lock",
+    "*.patch",
+    "package-lock.json",
+    "go.mod",
+    "go.sum",
+    ".gitattributes",
+    ".gitignore",
+    ".gitmodules",
+    ".hgignore",
+    ".svnignore",
+    "LICENSE",
+    ".github/workflows/check-pre-commit-hooks.yml",
+    ".pre-commit-config.yaml",
+    ".editorconfig",
+    ".gitattributes",
+    ".github/workflows/check-pre-commit-hooks.yml.license",
+    ".prettierrc.yaml",
+    ".taplo.toml",
+    "treefmt.toml",
+]
+walk = "git"
+
+[formatter.nixfmt]
+command = "nixfmt"
+excludes = []
+includes = ["*.nix"]
+options = ["--strict"]
+
+[formatter.prettier]
+command = "prettier"
+excludes = ["**/charts/**/templates/*.yaml", "**/charts/**/templates/*.yml", "**/charts/**/templates/**/*.yaml", "**/charts/**/templates/**/*.yml"]
+includes = [
+    "*.cjs",
+    "*.css",
+    "*.html",
+    "*.js",
+    "*.json",
+    "*.json5",
+    "*.jsx",
+    "*.md",
+    "*.mdx",
+    "*.mjs",
+    "*.scss",
+    "*.ts",
+    "*.tsx",
+    "*.vue",
+    "*.yaml",
+    "*.yml",
+]
+options = ["--write"]
+
+[formatter.rustfmt]
+command = "rustfmt"
+excludes = []
+includes = ["*.rs"]
+options = ["--config", "skip_children=true", "--edition", "2024"]
+
+[formatter.shfmt]
+command = "shfmt"
+excludes = []
+includes = ["*.sh", "*.bash", "*.envrc", "*.envrc.*"]
+options = ["-w", "-i", "0", "-s"]
+
+[formatter.taplo]
+command = "taplo"
+excludes = []
+includes = ["*.toml"]
+options = ["format"]

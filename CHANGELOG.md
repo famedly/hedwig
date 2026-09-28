@@ -63,7 +63,7 @@ Support for direct APNS is optional, config related to it isn't mandatory.
 
 - Build release builds with cargo-auditable
 - [**breaking**] Remove jitter functionality
-    - This entirely removes all jitter functionality from Hedwig, including the relevant metrics.
+  - This entirely removes all jitter functionality from Hedwig, including the relevant metrics.
 
 ### 🐛 Bug Fixes
 
@@ -109,7 +109,7 @@ Support for direct APNS is optional, config related to it isn't mandatory.
 - Correct container URL in Dockerfile
 - Update codeowners to reflect reality
 - Update Axum to 0.6.1
-- *(bot)* Update files from template
+- _(bot)_ Update files from template
 - Update codeowners
 - Add docker-compose
 - Add github action
@@ -133,7 +133,7 @@ Support for direct APNS is optional, config related to it isn't mandatory.
 ### ⚙️ Miscellaneous Tasks
 
 - Audit dependencies with cargo-vet
-- *(audit)* Cfg-if, firebae-cm and tinyvec_macros
+- _(audit)_ Cfg-if, firebae-cm and tinyvec_macros
 - Add curl to dockerfile
 - Bump to version 1.5.3
 
@@ -198,7 +198,7 @@ Support for direct APNS is optional, config related to it isn't mandatory.
 
 - Fallback for git build metadata
 - Add/update pre-commit
-- *(bot)* Update files from template
+- _(bot)_ Update files from template
 - Bump to 1.3.0
 
 ### Chore
@@ -226,7 +226,7 @@ Support for direct APNS is optional, config related to it isn't mandatory.
 ### 🐛 Bug Fixes
 
 - Remove collapse key from settings
-- *(ci)* Use updated and corrected template
+- _(ci)_ Use updated and corrected template
 
 ### ⚙️ Miscellaneous Tasks
 
@@ -237,11 +237,11 @@ Support for direct APNS is optional, config related to it isn't mandatory.
 ### 🚀 Features
 
 - Better unread notification handling
-- *(ci)* Migrate to templates in pipeline
+- _(ci)_ Migrate to templates in pipeline
 
 ### 🐛 Bug Fixes
 
-- *(ci)* Include new fix in upstream template
+- _(ci)_ Include new fix in upstream template
 - Ci fix attempt
 - Ci pipeline fix attempt
 
@@ -283,7 +283,7 @@ Support for direct APNS is optional, config related to it isn't mandatory.
 - Send high priority notifications
 - Correct rejected array
 - Allow configuring bind_ip, default to 127.0.0.1
-- *(ci)* Add missing build step for building release container images
+- _(ci)_ Add missing build step for building release container images
 
 ### 🚜 Refactor
 
