@@ -1,23 +1,100 @@
+## SPDX-FileCopyrightText: 2026 Famedly GmbH
+##
+## SPDX-License-Identifier: Apache-2.0
+
+# managed-by: engineering-standards — do not edit manually.
+#
+# Regenerate with `nix run .#filegen-activate`.
+
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
-    hooks:
-    -   id: check-byte-order-marker
-    -   id: check-case-conflict
-    -   id: check-merge-conflict
-    -   id: check-symlinks
-    -   id: check-yaml
-    -   id: check-toml
-    -   id: check-json
-    -   id: end-of-file-fixer
-    -   id: mixed-line-ending
-    -   id: trailing-whitespace
--   repo: git@github.com:famedly/backend-pre-commit-templates.git
-    rev: 548bf6ae934623c72e2e5f90e095b45259b6f4ba
-    hooks:
-    -   id: fmt
-    -   id: clippy
--   repo: https://github.com/crate-ci/typos
-    rev: typos-v0.10.26
-    hooks:
-    -   id: typos
+- hooks:
+  - id: check-added-large-files
+    stages: []
+  - id: check-case-conflict
+    stages: []
+  - id: check-illegal-windows-names
+    stages: []
+  - id: end-of-file-fixer
+    stages: []
+  - id: fix-byte-order-marker
+    stages: []
+  - id: check-json
+    stages: []
+  - id: check-json5
+    stages: []
+  - id: check-toml
+    stages: []
+  - id: check-vcs-permalinks
+    stages: []
+  - id: check-xml
+    stages: []
+  - args:
+    - --fix=lf
+    id: mixed-line-ending
+    stages: []
+  - id: check-symlinks
+    stages: []
+  - id: destroyed-symlinks
+    stages: []
+  - id: check-merge-conflict
+    stages: []
+  - id: detect-private-key
+    stages: []
+  - exclude_types:
+    - rust
+    id: check-shebang-scripts-are-executable
+    stages: []
+  - id: check-executables-have-shebangs
+    stages: []
+  repo: builtin
+- hooks:
+  - args:
+    - --write-changes
+    - --force-exclude
+    description: Check the repository for spelling mistakes
+    entry: typos
+    id: typos
+    language: system
+    name: typos
+    stages: []
+    types:
+    - text
+  - description: Ensure that files set up with the filegen module are up-to-date
+    entry: nix run .#filegen-activate
+    id: filegen
+    language: system
+    name: filegen
+    pass_filenames: false
+    stages:
+    - pre-push
+  - description: Format *all* files
+    entry: treefmt
+    id: treefmt
+    language: system
+    name: treefmt
+    require_serial: true
+    stages: []
+  repo: local
+- hooks:
+  - args:
+    - follow
+    description: Ensure that flake inputs are recursively de-duplicated
+    entry: flake-edit
+    files:
+      glob: '{flake.nix,flake.lock}'
+    id: flake-follows
+    language: system
+    name: flake-follows
+    pass_filenames: false
+    stages: []
+  repo: local
+- hooks:
+  - args:
+    - lint-file
+    description: Ensure compliance with REUSE recommendations
+    entry: reuse
+    id: reuse
+    language: system
+    name: reuse
+    stages: []
+  repo: local

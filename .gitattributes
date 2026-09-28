@@ -1,0 +1,16 @@
+## SPDX-FileCopyrightText: 2026 Famedly GmbH
+##
+## SPDX-License-Identifier: Apache-2.0
+
+# managed-by: engineering-standards — do not edit manually.
+#
+# Regenerate with `nix run .#filegen-activate`.
+
+.github/workflows/check-pre-commit-hooks.yml linguist-generated gitlab-generated
+.pre-commit-config.yaml linguist-generated gitlab-generated
+.editorconfig linguist-generated gitlab-generated
+.gitattributes linguist-generated gitlab-generated
+.github/workflows/check-pre-commit-hooks.yml.license linguist-generated gitlab-generated
+.prettierrc.yaml linguist-generated gitlab-generated
+.taplo.toml linguist-generated gitlab-generated
+treefmt.toml linguist-generated gitlab-generated
