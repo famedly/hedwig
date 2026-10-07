@@ -21,7 +21,7 @@ futures = "0.3.31"
 gcp_auth = "0.12.4"
 opentelemetry = { version = "0.31.0", features = ["metrics"] }
 opentelemetry-prometheus = "0.31"
-opentelemetry_sdk = { version = "0.31.0", features = ["metrics", "rt-tokio"] }
+opentelemetry_sdk = { version = "0.32.0", features = ["metrics", "rt-tokio"] }
 prometheus = "0.14"
 rust-telemetry = { version = "1.2.0", features = ["axum"] }
 serde = { version = "1.0.228", features = ["derive"] }
