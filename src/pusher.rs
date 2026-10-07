@@ -90,11 +90,11 @@ pub async fn push_notification_fcm(
 		}
 		DataMessageType::None => {
 			// Generic notification following the settings
-			// This codepath runs on old versions of the iOS app also works fine with
-			// android ones
+			// This codepath runs on old versions of the iOS app also works fine
+			// with android ones
 
-			// If there's no room_id then this is a badge only notification that must not
-			// have any notification content
+			// If there's no room_id then this is a badge only notification that
+			// must not have any notification content
 			if notification.room_id.is_some() {
 				body.notification(fcm_notification);
 			}
@@ -216,7 +216,8 @@ pub async fn push_notification_fcm(
 					"sound": settings.hedwig.notification_sound
 				});
 
-				// this is set dynamically as a null value will cause APNS to error
+				// this is set dynamically as a null value will cause APNS to
+				// error
 				if let Some(ref category) = settings.hedwig.apns_payload.category {
 					aps["category"] = json!(category);
 				}
@@ -235,13 +236,14 @@ pub async fn push_notification_fcm(
 			body.apns(ios_config);
 		}
 		DataMessageType::Ios => {
-			// Used for background notification handling on iOS, if enabled by the app
+			// Used for background notification handling on iOS, if enabled by
+			// the app
 
-			// If there's no room_id then this is a badge only notification that must not
-			// have any notification content
+			// If there's no room_id then this is a badge only notification that
+			// must not have any notification content
 			if notification.room_id.is_some() {
-				// If apple decide not to run the service extension there needs to be a fallback
-				// notification
+				// If apple decide not to run the service extension there needs
+				// to be a fallback notification
 				body.notification(fcm_notification);
 			}
 
@@ -254,7 +256,8 @@ pub async fn push_notification_fcm(
 					"sound": settings.hedwig.notification_sound
 				});
 
-				// this is set dynamically as a null value will cause APNS to error
+				// this is set dynamically as a null value will cause APNS to
+				// error
 				if let Some(ref category) = settings.hedwig.apns_payload.category {
 					aps["category"] = json!(category);
 				}
@@ -274,7 +277,8 @@ pub async fn push_notification_fcm(
 			body.apns(ios_config);
 		}
 		DataMessageType::IosVoip => {
-			// VoIP pushes are routed through push_notification_voip_apns, not FCM.
+			// VoIP pushes are routed through push_notification_voip_apns, not
+			// FCM.
 			return Err(HedwigError {
 				error: "VoIP pushes must use the APNs sender, not FCM".to_owned(),
 				errcode: ErrCode::VoipNotSupported,
@@ -367,11 +371,11 @@ pub async fn push_notification_voip_apns(
 		.or(notification.room_name.as_deref())
 		.unwrap_or("Unknown");
 
-	// Stable UUID derived from event_id so CallKit can deduplicate; falls back to
-	// a random UUID when the homeserver sends event_id_only format without an id.
-	// The id must be a valid UUID string (the app parses it with
-	// UUID(uuidString:)), so the Matrix event_id ($abc...) is hashed into a UUIDv5
-	// rather than passed raw.
+	// Stable UUID derived from event_id so CallKit can deduplicate; falls back
+	// to a random UUID when the homeserver sends event_id_only format without
+	// an id. The id must be a valid UUID string (the app parses it with
+	// UUID(uuidString:)), so the Matrix event_id ($abc...) is hashed into a
+	// UUIDv5 rather than passed raw.
 	let call_id = notification.event_id.as_ref().map_or_else(
 		|| Uuid::new_v4().to_string(),
 		|event_id| Uuid::new_v5(&Uuid::NAMESPACE_OID, event_id.as_bytes()).to_string(),

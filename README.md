@@ -3,13 +3,13 @@
 This is a dead simple Push Gateway for a [Matrix.org](https://matrix.org) application. It implements the [Matrix Push Notification API r0.1.1](https://matrix.org/docs/spec/push_gateway/r0.1.1) and supports [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging/) only with iOS and Android being supported. If you need to push to iOS be sure to add the appropriate push key or certificate to your FCM project.
 
 ## Features:
+
 - Implements the `POST /_matrix/push/v1/notify` endpoint
 - Forwards notifications from the format `event_id_only`
 - Returns invalid push keys in the `rejected` response field
 - Health status endpoint at `GET /health`
 - Version endpoint at `GET /version`
 - Prometheus metrics at `GET /metrics`
-
 
 This project name aged badly, trans rights are human rights!
 
@@ -27,7 +27,9 @@ Hedwig's config `config.yaml` can be replaced by environment variables, which is
 ### On app side:
 
 Example valid pusher set request (to homeserver, the homeserver will then talk to hedwig whenever there is a notification):
-* `/_matrix/client/v3/pushers/set`:
+
+- `/_matrix/client/v3/pushers/set`:
+
 ```json
 {
   "app_display_name": "Aweseome matrix client!",
@@ -50,86 +52,88 @@ Example valid pusher set request (to homeserver, the homeserver will then talk t
 
 This will result in an FCM notification being sent to the device with the notification request in a `key from json` -> `content from json as string` format.
 
-* Example request sent from hedwig to FCM for an android notification:
+- Example request sent from hedwig to FCM for an android notification:
+
 ```json
 {
-   "token":"Android",
-   "data":{
-      "content":"null",
-      "counts":"{\"unread\":1337,\"missed_calls\":null}",
-      "devices":"[{\"app_id\":\"com.famedly.🦊\",\"pushkey\":\"Android\",\"pushkey_ts\":1655896032,\"data\":{\"data_message\":\"android\",\"format\":\"event_id_only\"},\"tweaks\":null}]",
-      "prio":"\"high\"",
-      "room_id":"owo"
-   },
-   "android":{
-      "priority":"high",
-      "direct_boot_ok":false
-   }
+	"token": "Android",
+	"data": {
+		"content": "null",
+		"counts": "{\"unread\":1337,\"missed_calls\":null}",
+		"devices": "[{\"app_id\":\"com.famedly.🦊\",\"pushkey\":\"Android\",\"pushkey_ts\":1655896032,\"data\":{\"data_message\":\"android\",\"format\":\"event_id_only\"},\"tweaks\":null}]",
+		"prio": "\"high\"",
+		"room_id": "owo"
+	},
+	"android": {
+		"priority": "high",
+		"direct_boot_ok": false
+	}
 }
 ```
 
-* Example request to FCM for an iOS notification:
+- Example request to FCM for an iOS notification:
+
 ```json
 {
-   "token":"IoS",
-   "data":{
-      "content":"null",
-      "counts":"{\"unread\":1337,\"missed_calls\":null}",
-      "devices":"[{\"app_id\":\"com.famedly.🦊\",\"pushkey\":\"IoS\",\"pushkey_ts\":1655896032,\"data\":{\"data_message\":\"ios\",\"format\":\"event_id_only\"},\"tweaks\":null}]",
-      "prio":"\"high\"",
-      "room_id":"owo"
-   },
-   "notification":{
-      "title":"🦊 1337 🦊",
-      "body":"read the notification pls :c"
-   },
-   "apns":{
-      "headers":{
-         "apns-priority":"5",
-         "apns-push-type":"background"
-      },
-      "payload":{
-         "aps":{
-            "badge":1337,
-            "mutable-content":1,
-            "sound":"default"
-         }
-      }
-   }
+	"token": "IoS",
+	"data": {
+		"content": "null",
+		"counts": "{\"unread\":1337,\"missed_calls\":null}",
+		"devices": "[{\"app_id\":\"com.famedly.🦊\",\"pushkey\":\"IoS\",\"pushkey_ts\":1655896032,\"data\":{\"data_message\":\"ios\",\"format\":\"event_id_only\"},\"tweaks\":null}]",
+		"prio": "\"high\"",
+		"room_id": "owo"
+	},
+	"notification": {
+		"title": "🦊 1337 🦊",
+		"body": "read the notification pls :c"
+	},
+	"apns": {
+		"headers": {
+			"apns-priority": "5",
+			"apns-push-type": "background"
+		},
+		"payload": {
+			"aps": {
+				"badge": 1337,
+				"mutable-content": 1,
+				"sound": "default"
+			}
+		}
+	}
 }
 ```
 
-* Example request to FCM for a notification without having specified the device type (no message content can be displayed):
+- Example request to FCM for a notification without having specified the device type (no message content can be displayed):
 
 ```json
 {
-   "token":"Generic",
-   "notification":{
-      "title":"🦊 1337 🦊",
-      "body":"read the notification pls :c"
-   },
-   "android":{
-      "priority":"high",
-      "notification":{
-         "icon":"notifications_icon",
-         "sound":"default",
-         "tag":"org.matrix.default_notification",
-         "click_action":"FLUTTER_NOTIFICATION_CLICK",
-         "channel_id":"org.matrix.app.message"
-      },
-      "direct_boot_ok":false
-   },
-   "apns":{
-      "headers":{
-         "apns-priority":"10"
-      },
-      "payload":{
-         "aps":{
-            "badge":1337,
-            "sound":"default"
-         }
-      }
-   }
+	"token": "Generic",
+	"notification": {
+		"title": "🦊 1337 🦊",
+		"body": "read the notification pls :c"
+	},
+	"android": {
+		"priority": "high",
+		"notification": {
+			"icon": "notifications_icon",
+			"sound": "default",
+			"tag": "org.matrix.default_notification",
+			"click_action": "FLUTTER_NOTIFICATION_CLICK",
+			"channel_id": "org.matrix.app.message"
+		},
+		"direct_boot_ok": false
+	},
+	"apns": {
+		"headers": {
+			"apns-priority": "10"
+		},
+		"payload": {
+			"aps": {
+				"badge": 1337,
+				"sound": "default"
+			}
+		}
+	}
 }
 ```
 
@@ -144,13 +148,14 @@ We enforce a set of strict lints across the project, these can be found in `Carg
 3. Run `pre-commit install` to install the pre-commit hooks to your local environment
 
 # Healthcheck for Docker container
+
 The service API implements the `/health` check for the Docker containers.
 
-*IMPORTANT*: In order the Docker container to be able to perform the check, the image MUST provide the `curl` tool. If changing or updating the base image's version, please ensure the `curl` availability!
+_IMPORTANT_: In order the Docker container to be able to perform the check, the image MUST provide the `curl` tool. If changing or updating the base image's version, please ensure the `curl` availability!
 
-````BASH
+```BASH
 curl -s http://localhost:7022/health || exit 1
-````
+```
 
 S. [Dockerfile](./Dockerfile) for details.
 
@@ -166,7 +171,7 @@ parts of our source code at [github.com/famedly](https://github.com/famedly).
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on our code of
 conduct, and the process for submitting pull requests to us.
 
-For licensing information of this project, have a look at the [LICENSE](LICENSE.md)
+For licensing information of this project, have a look at the [LICENSE](LICENSE)
 file within the repository.
 
 If you compile the open source software that we make available to develop your

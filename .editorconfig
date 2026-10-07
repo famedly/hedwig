@@ -1,0 +1,37 @@
+## SPDX-FileCopyrightText: 2026 Famedly GmbH
+##
+## SPDX-License-Identifier: Apache-2.0
+
+# managed-by: engineering-standards — do not edit manually.
+#
+# Regenerate with `nix run .#filegen-activate`.
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+
+indent_style = tab
+indent_size = tab
+
+[*.dart]
+indent_style = space
+indent_size = 2
+
+[*.nix]
+indent_style = space
+indent_size = 2
+
+[*.toml]
+indent_style = space
+indent_size = 2
+
+[*.{yaml,yml}]
+indent_style = space
+indent_size = 2
+
+# Deliberately absent: `trim_trailing_whitespace`. It conflicts with rustfmt in
+# places (which is why the `trailing-whitespace` pre-commit hook is off too),
+# and hard-wrapped markdown uses it for line breaks.

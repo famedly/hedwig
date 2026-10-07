@@ -24,7 +24,7 @@ use a2::PushType;
 use config::{Config, ConfigError, Environment, File};
 use firebae_cm::{LightSettings, NotificationPriority, Visibility};
 use rust_telemetry::config::OtelConfig;
-use serde::{de, Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, de};
 
 use crate::models::{ApnsHeaders, ApnsPayload};
 

@@ -20,36 +20,39 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use std::{path::PathBuf, sync::Arc};
+use std::{
+	path::{Path, PathBuf},
+	sync::Arc,
+};
 
 use a2::{
-	request::payload::{Payload, PayloadLike},
 	PushType,
+	request::payload::{Payload, PayloadLike},
 };
 use async_trait::async_trait;
 use axum::{
+	Router,
 	body::Body,
 	http::{
-		header::{CONTENT_LENGTH, CONTENT_TYPE},
 		StatusCode,
+		header::{CONTENT_LENGTH, CONTENT_TYPE},
 	},
-	Router,
 };
 use color_eyre::Report;
 use firebae_cm::{FcmError, MessageBody};
 use matrix_hedwig::{
-	api::{create_router, AppState},
+	api::{AppState, create_router},
 	apns::APNSSender,
 	error::{ErrCode, HedwigError},
 	fcm::FcmSender,
 	models::{ApnsHeaders, ApnsPayload, Metrics, NotificationMethod},
 	settings::{self, DeserializablePushType, Settings},
 };
-use opentelemetry::{metrics::MeterProvider, KeyValue};
-use opentelemetry_sdk::{metrics::SdkMeterProvider, Resource};
+use opentelemetry::{KeyValue, metrics::MeterProvider};
+use opentelemetry_sdk::{Resource, metrics::SdkMeterProvider};
 use regex::Regex;
 use rust_telemetry::config::OtelConfig;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use tokio::sync::mpsc;
 use tower::Service;
 
@@ -306,12 +309,25 @@ async fn check_prom(
 	let re = Regex::new(r"} [0-9]\.[0-9]+")?;
 	let data = re.replace_all(&data, "} FLOAT");
 
-	// any version of the telemetry sdk is fine. we do this to avoid test failure on
-	// simple version bumping
+	// any version of the telemetry sdk is fine. we do this to avoid test
+	// failure on simple version bumping
 	let processed_data = Regex::new(r#"telemetry_sdk_version="[^"]*""#)
 		.unwrap()
 		.replace_all(&data, r#"telemetry_sdk_version="any""#);
 	assert_eq!(processed_data.trim_end(), std::fs::read_to_string(filename)?.trim_end());
+	Ok(())
+}
+
+/// Assert that `posted_message` matches the JSON stored in `filename`,
+/// comparing parsed values so formatting (indentation, whitespace) is ignored.
+fn assert_json_matches_file(
+	posted_message: &str,
+	filename: impl AsRef<Path>,
+) -> Result<(), Box<dyn std::error::Error>> {
+	let path = filename.as_ref();
+	let expected: Value = serde_json::from_str(&std::fs::read_to_string(path)?)?;
+	let actual: Value = serde_json::from_str(posted_message)?;
+	assert_eq!(actual, expected, "JSON mismatch against fixture {}", path.display());
 	Ok(())
 }
 
@@ -447,7 +463,10 @@ async fn push_body_limit() -> Result<(), Box<dyn std::error::Error>> {
 	assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 
 	let data = response_to_string(resp).await?;
-	assert_eq!(&data, "{\"error\":\"Failed to buffer the request body: length limit exceeded\",\"errcode\":\"BAD_JSON\"}");
+	assert_eq!(
+		&data,
+		"{\"error\":\"Failed to buffer the request body: length limit exceeded\",\"errcode\":\"BAD_JSON\"}"
+	);
 
 	Ok(())
 }
@@ -503,7 +522,7 @@ async fn normal_operation() -> Result<(), Box<dyn std::error::Error>> {
 		};
 
 		assert_eq!(&resp, "{\"rejected\":[]}");
-		assert_eq!(posted_message, std::fs::read_to_string(filename)?.trim_end());
+		assert_json_matches_file(&posted_message, filename)?;
 	}
 
 	check_prom(&mut service, "tests/normal_operation_prometheus.txt").await?;
@@ -568,7 +587,7 @@ async fn many_devices() -> Result<(), Box<dyn std::error::Error>> {
 			(p, if clearing { format!("{n}_clearing.json") } else { format!("{n}.json") })
 		}) {
 			let posted_message = serde_json::to_string(&fcm_rx.recv().await.unwrap())?;
-			assert_eq!(posted_message, std::fs::read_to_string(filename)?.trim_end());
+			assert_json_matches_file(&posted_message, filename)?;
 		}
 	}
 
@@ -636,8 +655,8 @@ async fn voip_push() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[tokio::test]
-async fn voip_push_no_sender_display_name_falls_back_to_room_name(
-) -> Result<(), Box<dyn std::error::Error>> {
+async fn voip_push_no_sender_display_name_falls_back_to_room_name()
+-> Result<(), Box<dyn std::error::Error>> {
 	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
 	let (apns_tx, mut apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
@@ -677,8 +696,8 @@ async fn voip_push_no_sender_display_name_falls_back_to_room_name(
 }
 
 #[tokio::test]
-async fn voip_push_without_top_level_notify_via_routes_to_apns(
-) -> Result<(), Box<dyn std::error::Error>> {
+async fn voip_push_without_top_level_notify_via_routes_to_apns()
+-> Result<(), Box<dyn std::error::Error>> {
 	let (fcm_tx, mut _fcm_rx) = mpsc::channel(1337);
 	let (apns_tx, mut apns_rx) = mpsc::channel(1337);
 	let mut service = setup_server(
