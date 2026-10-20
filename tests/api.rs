@@ -105,8 +105,8 @@ fn create_test_settings(port: u16) -> Settings {
 		},
 		apns_key_file_path: None,
 		fcm_credentials_file_path: PathBuf::from(""),
-		apns_team_id: "TEAM_ID".to_owned(),
-		apns_key_id: "KEY_ID".to_owned(),
+		apns_team_id: Some("TEAM_ID".to_owned()),
+		apns_key_id: Some("KEY_ID".to_owned()),
 		apns_sandbox: false,
 	};
 	Settings { log, server, hedwig, telemetry: OtelConfig::default() }
