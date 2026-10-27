@@ -39,6 +39,8 @@ futures = "0.3.31"
 http = "0.2.12"
 hyper = "0.14.32"
 regex = "1.11.1"
+temp-env = "0.3.6"
+tempfile = "3.23.0"
 tower = "0.5.0"
 
 [build-dependencies]

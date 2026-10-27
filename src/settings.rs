@@ -84,7 +84,7 @@ pub struct FcmNotificationAndroid {
 	pub vibrate_timings: Option<Vec<String>>,
 	/// Set the Notification.visibility of the notification.
 	pub visibility: Option<Visibility>,
-	/// Sets the number of items this notification represents.
+	/// Settings to control the notification's LED.
 	pub light_settings: Option<LightSettings>,
 	/// Contains the URL of an image that is going to be displayed in a
 	/// notification.
@@ -124,9 +124,11 @@ pub struct Hedwig {
 	/// Path to the FCM credentials file
 	pub fcm_credentials_file_path: PathBuf,
 	/// Team ID of the APNs key
-	pub apns_team_id: String,
+	#[serde(default)]
+	pub apns_team_id: Option<String>,
 	/// Key ID of the APNs key
-	pub apns_key_id: String,
+	#[serde(default)]
+	pub apns_key_id: Option<String>,
 	/// Whether to use the sandbox environment
 	pub apns_sandbox: bool,
 	/// Maximum accepted length for NotificationRequests via push

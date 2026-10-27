@@ -1,10 +1,5 @@
 log:
   level: INFO
-  # Remove the file_output block for stdout logging
-  file_output:
-    directory: "./logs-sample"
-    prefix: "hedwig.log"
-    rolling_frequency: "DAILY"
 
 server:
   bind_address: 127.0.0.1
@@ -74,6 +69,7 @@ hedwig:
   # set it to null if you don't want to use APNS directly
   apns_key_file_path: "path/to/apns_key.p8"
   fcm_credentials_file_path: "/path/to/fcm_credentials.json"
+  # apns_team_id and apns_key_id are only required when apns_key_file_path is set
   apns_team_id: "YOUR_TEAM_ID"
   apns_key_id: "YOUR_KEY_ID"
   apns_sandbox: true

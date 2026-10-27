@@ -159,8 +159,8 @@ fn setup_server_with_voip_app_id(
 				Settings::DEFAULT_NOTIFICATION_REQUEST_BODY_SIZE_LIMIT,
 			apns_key_file_path: None,
 			fcm_credentials_file_path: PathBuf::from(""),
-			apns_key_id: "".to_owned(),
-			apns_team_id: "".to_owned(),
+			apns_key_id: None,
+			apns_team_id: None,
 			apns_sandbox: false,
 		};
 		Settings { log, server, hedwig, telemetry: OtelConfig::default() }
