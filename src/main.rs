@@ -28,19 +28,10 @@ mod models;
 mod pusher;
 mod settings;
 
-use color_eyre::{
-	Report,
-	eyre::{WrapErr, eyre},
-};
+use color_eyre::{Report, eyre::WrapErr};
 use tracing::info;
 
 use crate::{apns::APNSSenderImpl, fcm::FcmSenderImpl};
-
-/// `apns_team_id`/`apns_key_id` are optional so that FCM-only deployments don't need to invent
-/// placeholder credentials, but they are mandatory once direct APNS is switched on.
-fn missing_apns(setting: &str) -> Report {
-	eyre!("{setting} is required when apns_key_file_path is set")
-}
 
 #[tokio::main]
 // Need to be able to print errors before the logger is up
@@ -57,20 +48,19 @@ async fn main() -> Result<(), Report> {
 		.await
 		.wrap_err("Fcm setup failed")?;
 
-	let apns_auth = match settings.hedwig.apns_key_file_path.as_ref() {
-		Some(path) => {
-			let team_id =
-				settings.hedwig.apns_team_id.clone().ok_or_else(|| missing_apns("apns_team_id"))?;
-			let key_id =
-				settings.hedwig.apns_key_id.clone().ok_or_else(|| missing_apns("apns_key_id"))?;
-
-			Some(
-				APNSSenderImpl::new(path.clone(), team_id, key_id, settings.hedwig.apns_sandbox)
-					.wrap_err("APNS authentication failed")?,
+	let apns_auth = settings
+		.hedwig
+		.apns_credentials()?
+		.map(|credentials| {
+			APNSSenderImpl::new(
+				credentials.key_file_path,
+				credentials.team_id,
+				credentials.key_id,
+				settings.hedwig.apns_sandbox,
 			)
-		}
-		None => None,
-	};
+		})
+		.transpose()
+		.wrap_err("APNS authentication failed")?;
 	info!("Starting server");
 	api::run_server(settings, Box::new(fcm_auth), apns_auth).await?;
 
