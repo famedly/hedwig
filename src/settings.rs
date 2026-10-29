@@ -137,6 +137,81 @@ pub struct Hedwig {
 	pub notification_request_body_size_limit: u64,
 }
 
+/// Credentials needed for talking to APNS directly.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ApnsCredentials {
+	/// Path to the APNs key file
+	pub key_file_path: PathBuf,
+	/// Team ID of the APNs key
+	pub team_id: String,
+	/// Key ID of the APNs key
+	pub key_id: String,
+}
+
+/// Names of the settings that configure direct APNS, in configuration order.
+const APNS_SETTINGS: [&str; 3] = ["apns_key_file_path", "apns_team_id", "apns_key_id"];
+
+/// Direct APNS is configured only in part: some of [`APNS_SETTINGS`] are set
+/// while the others are missing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct IncompleteApnsConfig {
+	/// The APNS settings that are absent, in configuration order.
+	pub missing: Vec<&'static str>,
+}
+
+impl fmt::Display for IncompleteApnsConfig {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(
+			f,
+			"incomplete APNS configuration: {} missing; configure all of {} or none of them",
+			self.missing.join(", "),
+			APNS_SETTINGS.join(", ")
+		)
+	}
+}
+
+impl std::error::Error for IncompleteApnsConfig {}
+
+impl Hedwig {
+	/// Credentials for talking to APNS directly, or `None` when none of
+	/// [`APNS_SETTINGS`] is configured and direct APNS is therefore switched off.
+	///
+	/// The three settings are optional so that FCM-only deployments don't need to
+	/// invent placeholder credentials, but they are only optional together: a
+	/// half-configured APNS section is a mistake worth failing on rather than
+	/// quietly falling back to FCM-only operation.
+	///
+	/// # Errors
+	///
+	/// If some but not all of [`APNS_SETTINGS`] are configured.
+	pub fn apns_credentials(&self) -> Result<Option<ApnsCredentials>, IncompleteApnsConfig> {
+		let key_file_path =
+			self.apns_key_file_path.as_deref().filter(|path| !path.as_os_str().is_empty());
+		let team_id = self.apns_team_id.as_deref().filter(|id| !id.is_empty());
+		let key_id = self.apns_key_id.as_deref().filter(|id| !id.is_empty());
+
+		match (key_file_path, team_id, key_id) {
+			(None, None, None) => Ok(None),
+			(Some(key_file_path), Some(team_id), Some(key_id)) => Ok(Some(ApnsCredentials {
+				key_file_path: key_file_path.to_path_buf(),
+				team_id: team_id.to_owned(),
+				key_id: key_id.to_owned(),
+			})),
+			(key_file_path, team_id, key_id) => {
+				let configured = [key_file_path.is_some(), team_id.is_some(), key_id.is_some()];
+				Err(IncompleteApnsConfig {
+					missing: APNS_SETTINGS
+						.iter()
+						.zip(configured)
+						.filter(|(_, is_configured)| !is_configured)
+						.map(|(setting, _)| *setting)
+						.collect(),
+				})
+			}
+		}
+	}
+}
+
 /// We need this to implement the Deserialize trait for PushType
 /// Ideally, the Deserialize trait should be implemented in the a2 crate
 /// directly
