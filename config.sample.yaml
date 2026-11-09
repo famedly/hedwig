@@ -7,9 +7,11 @@ server:
 
 hedwig:
   app_id: "org.matrix.awesome_client"
-  # Application ID prefix for VoIP devices (data_message: ios_voip). Must be
-  # the app's real bundle id + ".voip" since it's sent to Apple as the
-  # apns-topic.
+  # Application ID prefix used to validate VoIP pushers (data_message:
+  # ios_voip); the app_id above is not accepted for them. Hedwig only matches
+  # incoming app_ids against this prefix -- it never sends it onwards. The
+  # apns-topic is always the device's own app_id, which hedwig separately
+  # requires to end in ".voip".
   voip_app_id: "org.matrix.awesome_client.voip"
   # specifies how many attempts at pushing a notification to a device should be made before giving up and reporting the push key as dead
   push_max_retries: 5
