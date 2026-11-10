@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.5.0] - 2026-11-09
+
+### 🚀 Features
+
+- better validation of APNS config
+
+### 🐛 Bug Fixes
+
+- make APNS credentials optional and correct stale config docs
+- docker workflow input
+
+### ⚙️ Miscellaneous Tasks
+
+- voip_app_id is a validation prefix, not the apns-topic
+- update rust crate time to v0.3.47 [security]
+- align opentelemetry stack on 0.32 to fix SDK version split
+- update rust crate opentelemetry_sdk to 0.32.0 [security]
+- install engineering-standards
+
 ## [2.4.0] - 2026-08-07
 
 ### 🚀 Features
