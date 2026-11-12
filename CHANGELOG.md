@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.5.1] - 2026-11-12
+
+### 🐛 Bug Fixes
+
+- properly use the new docker registry for the base image
+
 ## [2.5.0] - 2026-11-09
 
 ### 🚀 Features
