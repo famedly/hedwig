@@ -1,4 +1,4 @@
-FROM docker-oss.nexus.famedly.de/rust-container:nightly AS builder
+FROM registry.famedly.net/docker-oss/rust-container:nightly AS builder
 ARG CARGO_NET_GIT_FETCH_WITH_CLI=true
 ARG CARGO_BUILD_RUSTFLAGS
 ARG CI_SSH_PRIVATE_KEY

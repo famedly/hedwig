@@ -3,7 +3,7 @@ version: "3"
 services:
   hedwig:
     restart: "unless-stopped"
-    image: docker-oss.nexus.famedly.de/hedwig
+    image: registry.famedly.net/docker-oss/hedwig
     build: .
     env_file: "config.properties"
     volumes:
