@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.6.0] - 2026-11-17
+
+### 🚀 Features
+
+- distroless runtime image, running as non-root
+- health and --version commands, version from Cargo.toml
+
 ## [2.5.2] - 2026-11-17
 
 ### 🐛 Bug Fixes
