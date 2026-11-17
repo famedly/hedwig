@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.5.2] - 2026-11-17
+
+### 🐛 Bug Fixes
+
+- run the image on Debian trixie like its builder; the 2.5.1 image does not start (`GLIBC_2.39` not found)
+
 ## [2.5.1] - 2026-11-12
 
 ### 🐛 Bug Fixes
