@@ -149,13 +149,13 @@ We enforce a set of strict lints across the project, these can be found in `Carg
 
 # Healthcheck for Docker container
 
-The service API implements the `/health` check for the Docker containers.
-
-_IMPORTANT_: In order the Docker container to be able to perform the check, the image MUST provide the `curl` tool. If changing or updating the base image's version, please ensure the `curl` availability!
+The service API implements the `/health` check for the Docker containers. The image is distroless (no shell, no curl), so the binary probes it itself: `matrix-hedwig health` asks `GET /health` on `server.port` of the same configuration (loopback if `server.bind_address` is `0.0.0.0` or `::`) and exits non-zero unless it answers 200.
 
 ```BASH
-curl -s http://localhost:7022/health || exit 1
+matrix-hedwig health
 ```
+
+The image runs as the non-root user `nonroot` (UID 65532). `matrix-hedwig --version` prints the version; the image build runs it, so a binary that cannot run on the base image fails the build.
 
 S. [Dockerfile](./Dockerfile) for details.
 
