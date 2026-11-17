@@ -23,6 +23,7 @@ mod api;
 mod apns;
 mod error;
 mod fcm;
+mod health;
 mod metrics;
 mod models;
 mod pusher;
@@ -37,10 +38,27 @@ use crate::{apns::APNSSenderImpl, fcm::FcmSenderImpl};
 // Need to be able to print errors before the logger is up
 #[allow(clippy::print_stderr)]
 async fn main() -> Result<(), Report> {
+	match std::env::args().nth(1).as_deref() {
+		// Also proves at image build time that the binary runs on the image's base.
+		Some("--version") => {
+			#[allow(clippy::print_stdout)]
+			{
+				println!("{}", env!("CARGO_PKG_VERSION"));
+			}
+			return Ok(());
+		}
+		// The container health check: distroless images have no curl.
+		Some("health") => {
+			let settings = settings::Settings::load(settings::Settings::CONFIG_FILENAME)?;
+			return health::probe(&settings.server).wrap_err("health check failed");
+		}
+		_ => {}
+	}
+
 	// Complete failure if config file is missing
 	let settings = settings::Settings::load(settings::Settings::CONFIG_FILENAME)?;
 
-	rust_telemetry::init_otel(&settings.telemetry, "Hedwig", "2.0.0", "Hedwig")?;
+	rust_telemetry::init_otel(&settings.telemetry, "Hedwig", env!("CARGO_PKG_VERSION"), "Hedwig")?;
 
 	info!("Launching with settings: {:?}", settings);
 
