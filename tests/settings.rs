@@ -4,6 +4,7 @@
 
 use std::{fs, path::PathBuf};
 
+use firebae_cm::{NotificationPriority, Visibility};
 use matrix_hedwig::settings;
 use tempfile::Builder as TempFileBuilder;
 
@@ -118,4 +119,42 @@ fn empty_apns_setting_is_reported_as_missing() {
 
 	let error = settings.hedwig.apns_credentials().unwrap_err();
 	assert_eq!(error.missing, vec!["apns_team_id"]);
+}
+
+/// Loads `config.sample.yaml` with the given Android notification settings
+/// replaced.
+fn load_sample_with_android(replacements: &[(&str, &str)]) -> Result<settings::Settings, String> {
+	let mut config = fs::read_to_string("config.sample.yaml").unwrap();
+	for (setting, value) in replacements {
+		config = config.replace(&format!("{setting}: null"), &format!("{setting}: {value}"));
+	}
+	let config_file = TempFileBuilder::new().suffix(".yaml").tempfile().unwrap();
+	fs::write(config_file.path(), config).unwrap();
+	settings::Settings::load(config_file.path().to_str().unwrap()).map_err(|err| err.to_string())
+}
+
+#[test]
+/// FCM enums load in the snake case older configs use as well as in the
+/// protobuf names FCM expects, and vibrate timings load as seconds.
+fn android_notification_settings_load_in_any_case() {
+	for (priority, visibility) in [("priority_high", "public"), ("PRIORITY_HIGH", "PUBLIC")] {
+		let settings = load_sample_with_android(&[
+			("notification_priority", priority),
+			("visibility", visibility),
+			("vibrate_timings", r#"["0.5s", "1s"]"#),
+		])
+		.unwrap();
+		let android = settings.hedwig.notification_android;
+
+		assert_eq!(android.notification_priority, Some(NotificationPriority::PriorityHigh));
+		assert_eq!(android.visibility, Some(Visibility::Public));
+		assert_eq!(android.vibrate_timings, Some(vec![0.5, 1.0]));
+	}
+}
+
+#[test]
+/// A vibrate timing that is not a duration fails at startup, not per push.
+fn invalid_vibrate_timings_fail_to_load() {
+	let err = load_sample_with_android(&[("vibrate_timings", r#"["500ms"]"#)]).unwrap_err();
+	assert!(err.contains("invalid duration"), "{err}");
 }

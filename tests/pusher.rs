@@ -69,6 +69,7 @@ impl FcmSender for FakeFcmSender {
 				code: 0,
 				status: "Bad Request".to_owned(),
 				message: "blubb".to_owned(),
+				details: Vec::new(),
 			})
 			.into())
 		} else {
@@ -552,7 +553,7 @@ async fn many_requests() -> Result<(), Box<dyn std::error::Error>> {
 
 	for _ in 1..100 {
 		run_request(&mut service, test_message(false, dev.clone())).await?;
-		fcm_rx.recv().await.unwrap();
+		let _ = fcm_rx.recv().await.unwrap();
 	}
 
 	Ok(())

@@ -67,6 +67,10 @@ impl FcmSenderImpl {
 		unsafe {
 			set_var("GOOGLE_APPLICATION_CREDENTIALS", credentials_file_path);
 		}
+		// firebae-cm's reqwest brings in aws-lc-rs and gcp_auth brings in ring, so
+		// rustls cannot pick a process-wide crypto provider on its own and
+		// gcp_auth's client would panic. Errors only if one is installed already.
+		let _ = rustls::crypto::ring::default_provider().install_default();
 		let provider = gcp_auth::provider().await?;
 		let project_id: String = provider.project_id().await?.to_string();
 
@@ -77,7 +81,7 @@ impl FcmSenderImpl {
 #[async_trait]
 impl FcmSender for FcmSenderImpl {
 	async fn send(&self, body: MessageBody) -> Result<String, HedwigError> {
-		let client = firebae_cm::Client::new();
+		let client = firebae_cm::Client::new()?;
 		let token = self
 			.provider
 			.token(&["https://www.googleapis.com/auth/firebase.messaging"])

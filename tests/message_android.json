@@ -7,5 +7,5 @@
 		"prio": "\"high\"",
 		"room_id": "owo"
 	},
-	"android": { "priority": "high", "direct_boot_ok": false }
+	"android": { "priority": "HIGH", "direct_boot_ok": false }
 }

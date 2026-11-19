@@ -73,6 +73,7 @@ pub struct FcmNotificationAndroid {
 	/// notification.
 	pub default_sound: Option<bool>,
 	/// Set the relative priority for this notification
+	#[serde(default, deserialize_with = "deserialize_fcm_enum")]
 	pub notification_priority: Option<NotificationPriority>,
 	/// If set to true, use the Android framework's default vibrate pattern for
 	/// the notification.
@@ -80,15 +81,54 @@ pub struct FcmNotificationAndroid {
 	/// If set to true, use the Android framework's default LED light settings
 	/// for the notification.
 	pub default_light_settings: Option<bool>,
-	/// Set the vibration pattern to use.
-	pub vibrate_timings: Option<Vec<String>>,
+	/// Set the vibration pattern to use, as durations like `"0.5s"`; parsed to
+	/// seconds.
+	#[serde(default, deserialize_with = "deserialize_durations")]
+	pub vibrate_timings: Option<Vec<f64>>,
 	/// Set the Notification.visibility of the notification.
+	#[serde(default, deserialize_with = "deserialize_fcm_enum")]
 	pub visibility: Option<Visibility>,
 	/// Settings to control the notification's LED.
 	pub light_settings: Option<LightSettings>,
 	/// Contains the URL of an image that is going to be displayed in a
 	/// notification.
 	pub image: Option<String>,
+}
+
+/// Deserializes an FCM enum in any case. FCM expects the protobuf names
+/// (`PRIORITY_HIGH`), which firebae-cm uses since 0.5, while configurations
+/// written for older versions use snake case (`priority_high`).
+fn deserialize_fcm_enum<'de, D, T>(deserializer: D) -> Result<Option<T>, D::Error>
+where
+	D: Deserializer<'de>,
+	T: Deserialize<'de>,
+{
+	Option::<String>::deserialize(deserializer)?
+		.map(|value| T::deserialize(de::value::StringDeserializer::new(value.to_uppercase())))
+		.transpose()
+}
+
+/// Deserializes protobuf durations like `"3.5s"` into seconds
+fn deserialize_durations<'de, D>(deserializer: D) -> Result<Option<Vec<f64>>, D::Error>
+where
+	D: Deserializer<'de>,
+{
+	Option::<Vec<String>>::deserialize(deserializer)?
+		.map(|durations| {
+			durations
+				.iter()
+				.map(|duration| {
+					duration.strip_suffix('s').and_then(|seconds| seconds.parse().ok()).ok_or_else(
+						|| {
+							de::Error::custom(format!(
+								"invalid duration {duration:?}, expected e.g. \"0.5s\""
+							))
+						},
+					)
+				})
+				.collect()
+		})
+		.transpose()
 }
 
 /// Hedwig configuration
