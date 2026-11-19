@@ -22,6 +22,7 @@ pub mod api;
 pub mod apns;
 pub mod error;
 pub mod fcm;
+pub mod health;
 pub mod metrics;
 pub mod models;
 pub mod pusher;

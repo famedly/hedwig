@@ -131,3 +131,21 @@ async fn server_starts_successfully() -> Result<(), Box<dyn std::error::Error>> 
 
 	Ok(())
 }
+
+#[tokio::test]
+async fn health_probe_gets_200_from_the_server() -> Result<(), Box<dyn std::error::Error>> {
+	// A free port: bind, read it, release it for the server.
+	let port = std::net::TcpListener::bind("127.0.0.1:0")?.local_addr()?.port();
+	let settings = create_test_settings(port);
+	let server = settings::Server { port, bind_address: [0, 0, 0, 0].into() };
+	let fcm_sender: Box<dyn FcmSender + Send + Sync> = Box::new(FakeFcmSender);
+	let server_handle = tokio::spawn(run_server(settings, fcm_sender, Some(FakeAPNSSender {})));
+	time::sleep(time::Duration::from_secs(1)).await;
+
+	// An unspecified bind address is probed on loopback.
+	let result = tokio::task::spawn_blocking(move || matrix_hedwig::health::probe(&server)).await?;
+	server_handle.abort();
+	result?;
+
+	Ok(())
+}
