@@ -1,7 +1,7 @@
 {
 	"token": "Generic",
 	"android": {
-		"priority": "high",
+		"priority": "HIGH",
 		"notification": {
 			"icon": "notifications_icon",
 			"sound": "default",
