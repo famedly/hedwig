@@ -155,7 +155,12 @@ The service API implements the `/health` check for the Docker containers. The im
 matrix-hedwig health
 ```
 
-The image runs as the non-root user `nonroot` (UID 65532). `matrix-hedwig --version` prints the version; the image build runs it, so a binary that cannot run on the base image fails the build.
+The image runs as the non-root user `nonroot` (UID 65532). When upgrading from an image that ran as root:
+
+- Mounted files, such as the configuration and the FCM/APNs credentials, must be readable by UID 65532 (for example `chown 65532`, or mode `0640` with group 65532, which Kubernetes sets through `fsGroup: 65532`); a credential file at mode `0600` owned by another user makes startup fail with `Fcm setup failed`.
+- A `server.port` below 1024 needs the `NET_BIND_SERVICE` capability (`--cap-add NET_BIND_SERVICE`) unless the runtime lowers the privileged-port threshold, as Docker 20.10 and later do; the default port 7022 is not affected.
+
+`matrix-hedwig --version` prints the version; the image build runs it, so a binary that cannot run on the base image fails the build.
 
 S. [Dockerfile](./Dockerfile) for details.
 
